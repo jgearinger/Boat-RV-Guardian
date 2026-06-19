@@ -12,12 +12,20 @@ interface FlowData {
 }
 
 export default function App() {
+  // --- Environment Detection for CORS/Network Safety ---
+  const isNativeApp = typeof (window as any).__TAURI__ !== 'undefined' || typeof (window as any).Capacitor !== 'undefined';
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const canUseRealConnection = isNativeApp || isLocalhost;
+
   // --- Persistent Gateway & Device Configuration ---
   const [gatewayIp, setGatewayIp] = useState(() => localStorage.getItem('lt_gateway_ip') || '192.168.1.100');
   const [gatewayId, setGatewayId] = useState(() => localStorage.getItem('lt_gateway_id') || 'GW_02_MOCK');
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || 'TAP_MOCK_1');
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '5'));
-  const [mockMode, setMockMode] = useState(() => localStorage.getItem('lt_mock') !== 'false');
+  const [mockMode, setMockMode] = useState(() => {
+    if (!canUseRealConnection) return true; // Force mock mode in public web build
+    return localStorage.getItem('lt_mock') !== 'false';
+  });
 
   // --- Local Safety Sentry Config ---
   const [autoGuardEnabled, setAutoGuardEnabled] = useState(() => localStorage.getItem('lt_autoguard') !== 'false');
@@ -762,12 +770,20 @@ export default function App() {
                     <label className="form-label" style={{ margin: 0 }}>Simulate Locally (Mock Mode)</label>
                     <input
                       type="checkbox"
+                      disabled={!canUseRealConnection}
                       checked={mockMode}
                       onChange={(e) => setMockMode(e.target.checked)}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }}
+                      style={{ width: '18px', height: '18px', cursor: !canUseRealConnection ? 'not-allowed' : 'pointer', accentColor: 'var(--accent-cyan)' }}
                     />
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Disable mock mode to query a real physical G2S gateway.</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Disable mock mode to query a real physical G2S gateway.
+                  </span>
+                  {!canUseRealConnection && (
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-orange)', marginTop: '8px', fontWeight: 'bold' }}>
+                      🌐 Web Preview: Real connection is locked to Mock Mode in browser. Download desktop/mobile binaries for local hardware connectivity.
+                    </span>
+                  )}
                 </div>
 
                 <div>
