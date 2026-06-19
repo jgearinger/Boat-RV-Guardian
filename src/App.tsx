@@ -417,7 +417,7 @@ export default function App() {
         setIsWatering(data.is_watering ?? false);
         setSpeed(Number(data.speed ?? 0));
         setVolume(Number(data.volume ?? 0));
-        setRemainDuration(Number(data.remain_duration ?? 0));
+        setRemainDuration(Number(data.remain_duration ?? 0) * 60);
         
         setConnectionStatus('connected');
         setLastUpdated(new Date().toLocaleTimeString());
