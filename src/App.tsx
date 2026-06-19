@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.0.3';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauri() && options?.method === 'POST') {
