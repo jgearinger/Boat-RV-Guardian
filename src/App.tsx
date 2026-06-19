@@ -417,7 +417,7 @@ export default function App() {
         setIsWatering(data.is_watering ?? false);
         setSpeed(Number(data.speed ?? 0));
         setVolume(Number(data.volume ?? 0));
-        setRemainDuration(Number(data.remain_duration ?? 0) * 60);
+        setRemainDuration(Number(data.remain_duration ?? 0));
         
         setConnectionStatus('connected');
         setLastUpdated(new Date().toLocaleTimeString());
@@ -461,17 +461,33 @@ export default function App() {
 
     try {
       setErrorMsg(null);
-      const response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cmd: 6,
-          gw_id: gatewayId,
-          dev_id: deviceId,
-          duration: durationMins,
-          // volume parameter can be included based on API docs if device flow meter supports auto-stop
-        }),
-      });
+      let response;
+      if (apiMode === 'cloud') {
+        response = await unifiedFetch('https://www.link-tap.com/api/activateInstantMode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: cloudUsername,
+            apiKey: cloudApiKey,
+            gatewayId,
+            taplinkerId: deviceId,
+            action: true,
+            duration: durationMins, // Cloud API takes minutes
+            autoBack: true
+          }),
+        });
+      } else {
+        response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cmd: 6,
+            gw_id: gatewayId,
+            dev_id: deviceId,
+            duration: Math.round(durationMins * 60), // Local API expects SECONDS
+          }),
+        });
+      }
 
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       addLog('success', 'API Start command received by Gateway.');
@@ -497,15 +513,32 @@ export default function App() {
 
     try {
       setErrorMsg(null);
-      const response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cmd: 7,
-          gw_id: gatewayId,
-          dev_id: deviceId,
-        }),
-      });
+      let response;
+      if (apiMode === 'cloud') {
+        response = await unifiedFetch('https://www.link-tap.com/api/activateInstantMode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: cloudUsername,
+            apiKey: cloudApiKey,
+            gatewayId,
+            taplinkerId: deviceId,
+            action: false,
+            duration: 0,
+            autoBack: true
+          }),
+        });
+      } else {
+        response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cmd: 7,
+            gw_id: gatewayId,
+            dev_id: deviceId,
+          }),
+        });
+      }
 
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       setIsWatering(false);
