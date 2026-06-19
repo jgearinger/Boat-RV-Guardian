@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.13';
+const APP_VERSION = '1.0.14';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST') {
@@ -57,8 +57,21 @@ const unifiedFetch = async (url: string, options?: any) => {
     }
   }
 
-  const res = await fetch(url, options);
-  return res;
+  let timeoutId: any;
+  const controller = new AbortController();
+  if (typeof AbortSignal !== 'undefined' && (AbortSignal as any).timeout) {
+    options = { ...options, signal: (AbortSignal as any).timeout(5000) };
+  } else {
+    timeoutId = setTimeout(() => controller.abort(), 5000);
+    options = { ...options, signal: controller.signal };
+  }
+
+  try {
+    const res = await fetch(url, options);
+    return res;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 };
 
 interface AlertLog {
@@ -451,6 +464,11 @@ export default function App() {
     setTargetVolume(volumeLimitLiters);
     if (mockMode) setVolume(0);
 
+    // Optimistically update UI so buttons react immediately
+    setIsWatering(true);
+    setRemainDuration(durationMins * 60);
+    if (!mockMode) setSpeed(0);
+
     addLog('info', `Sending API command: START watering. Duration: ${durationMins}m, Limit: ${volumeLimitLiters}L`);
     
     if (mockMode) {
@@ -495,9 +513,11 @@ export default function App() {
 
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       addLog('success', 'API Start command received by Gateway.');
+      setTimeout(() => setManualRefresh(Date.now()), 2500); // Poll status shortly after to sync
     } catch (err: any) {
       addLog('danger', `API Start command failed: ${err.message}`);
       setErrorMsg(err.message);
+      setIsWatering(false); // Revert optimistic update
     } finally {
       setIsCommandLoading(false);
     }
@@ -518,6 +538,8 @@ export default function App() {
     }
 
     setIsCommandLoading(true);
+    setIsWatering(false); // Optimistically update UI
+    setSpeed(0);
     try {
       setErrorMsg(null);
       let response;
@@ -548,12 +570,12 @@ export default function App() {
       }
 
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-      setIsWatering(false);
-      setSpeed(0);
-      addLog('success', 'Valve closed successfully by Gateway.');
+      addLog('success', 'API Stop command received by Gateway.');
+      setTimeout(() => setManualRefresh(Date.now()), 2500); // Poll status shortly after to sync
     } catch (err: any) {
       addLog('danger', `API Stop command failed: ${err.message}`);
       setErrorMsg(err.message);
+      setIsWatering(true); // Revert optimistic update
     } finally {
       setIsCommandLoading(false);
     }
@@ -687,7 +709,7 @@ export default function App() {
         marginBottom: '30px'
       }}>
         <div style={{
-          maxWidth: '1200px',
+          maxWidth: '900px',
           margin: '0 auto',
           display: 'flex',
           justifyContent: 'space-between',
@@ -714,7 +736,7 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Battery Indicator */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={battery < 15 ? 'var(--accent-red)' : 'var(--accent-emerald)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
