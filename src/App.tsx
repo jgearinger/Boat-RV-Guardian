@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauri() && options?.method === 'POST') {
@@ -173,37 +173,6 @@ export default function App() {
   const [targetVolume, setTargetVolume] = useState(0);
   const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
-  const [loginPassword, setLoginPassword] = useState('');
-  const [isFetchingKey, setIsFetchingKey] = useState(false);
-  const [fetchKeyError, setFetchKeyError] = useState<string | null>(null);
-
-  const handleFetchApiKey = async () => {
-    setIsFetchingKey(true);
-    setFetchKeyError(null);
-    try {
-      const res = await unifiedFetch('https://www.link-tap.com/api/getApiKey', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: cloudUsername, password: loginPassword })
-      });
-      const text = await res.text();
-      let data: any;
-      try { data = JSON.parse(text); } catch { throw new Error('Invalid server response'); }
-      if (data.apiKey) {
-        setCloudApiKey(data.apiKey);
-        setLoginPassword('');
-        addLog('success', '✅ API key successfully retrieved from LinkTap!');
-      } else if (data.message) {
-        throw new Error(data.message);
-      } else {
-        throw new Error('API key not found in response');
-      }
-    } catch (e: any) {
-      setFetchKeyError(e.message || 'Failed to retrieve API key');
-      addLog('danger', `❌ Key fetch failed: ${e.message}`);
-    }
-    setIsFetchingKey(false);
-  };
 
   // --- Display Computed Values ---
   const displaySpeed = unitSystem === 'imperial' ? speed * 0.264172 : speed;
@@ -1182,30 +1151,13 @@ export default function App() {
                 {apiMode === 'cloud' && !mockMode && (
                   <>
                     <div><label className="form-label">Cloud Username</label><input type="text" className="form-input" value={cloudUsername} onChange={(e) => { setCloudUsername(e.target.value); setIsPollingActive(false); }} placeholder="App Username" /></div>
-                    {cloudApiKey ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ flex: 1 }}><label className="form-label">Cloud API Key</label><input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="Paste key or use Login below" /></div>
-                        <button onClick={() => { setCloudApiKey(''); }} style={{ marginTop: '20px', background: 'none', border: '1px solid rgba(255,100,100,0.3)', borderRadius: '6px', padding: '8px', color: '#ff8b8b', cursor: 'pointer', fontSize: '0.75rem' }}>✕ Clear</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label className="form-label" style={{ marginBottom: 0 }}>Cloud API Key</label>
+                      <input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="Paste API Key" />
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                        ℹ️ <strong>How to get your API Key:</strong> LinkTap does not allow retrieving the API key via the mobile app anymore. You must log into the <a href="https://www.link-tap.com" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>LinkTap Web Portal</a> on a computer, go to <strong>Settings</strong>, and generate your API Key there.
                       </div>
-                    ) : (
-                      <div style={{ background: 'rgba(0,242,254,0.05)', border: '1px solid rgba(0,242,254,0.2)', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>🔑 Fetch API Key via Login</div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Enter your LinkTap account password to automatically retrieve your API key.</div>
-                        <input type="password" className="form-input" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="LinkTap account password" />
-                        {fetchKeyError && <div style={{ fontSize: '0.78rem', color: '#ff8b8b' }}>❌ {fetchKeyError}</div>}
-                        <button
-                          className="btn-primary"
-                          disabled={isFetchingKey || !cloudUsername || !loginPassword}
-                          onClick={handleFetchApiKey}
-                          style={{ padding: '10px', fontSize: '0.85rem' }}
-                        >
-                          {isFetchingKey ? '⏳ Fetching key...' : '🔑 Login & Fetch API Key'}
-                        </button>
-                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }}></div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center' }}>Or paste your key manually:</div>
-                        <input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="Paste API Key from portal" />
-                      </div>
-                    )}
+                    </div>
                   </>
                 )}
 

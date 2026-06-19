@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.jgearinger.linktapboatrv"
+    namespace = "com.jgearinger.boatrvguardian"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.jgearinger.linktapboatrv"
+        applicationId "com.jgearinger.boatrvguardian"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -1,4 +1,4 @@
-package com.jgearinger.linktapboatrv;
+package com.jgearinger.boatrvguardian;
 
 import com.getcapacitor.BridgeActivity;
 

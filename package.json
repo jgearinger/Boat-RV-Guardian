@@ -1,7 +1,7 @@
 {
   "name": "boat-rv-guardian",
   "private": true,
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A smart dashboard for using LinkTap as a burst pipe auto-shutoff system for boats and RVs.",
   "type": "module",
   "scripts": {
@@ -23,6 +23,7 @@
     "react-dom": "^19.2.6"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2.11.2",
     "@types/node": "^24.12.3",
