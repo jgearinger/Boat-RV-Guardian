@@ -1,11 +1,12 @@
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, SocketAddr};
 use std::time::Duration;
 use tauri::command;
 
 #[command]
-fn raw_linktap_post(ip: String, payload: String) -> Result<String, String> {
-    let mut stream = TcpStream::connect(format!("{}:80", ip))
+async fn raw_linktap_post(ip: String, payload: String) -> Result<String, String> {
+    let addr: SocketAddr = format!("{}:80", ip).parse().map_err(|e| format!("Invalid IP: {}", e))?;
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(3))
         .map_err(|e| format!("Failed to connect: {}", e))?;
     
     stream.set_read_timeout(Some(Duration::from_secs(5)))
@@ -14,8 +15,9 @@ fn raw_linktap_post(ip: String, payload: String) -> Result<String, String> {
         .map_err(|e| e.to_string())?;
 
     let request = format!(
-        "POST /api.shtml HTTP/1.0\r\n\
+        "POST /api.shtml HTTP/1.1\r\n\
          Host: {}\r\n\
+         Connection: close\r\n\
          Content-Type: application/json\r\n\
          Content-Length: {}\r\n\
          \r\n\

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.9';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauri() && options?.method === 'POST') {
@@ -173,6 +173,7 @@ export default function App() {
   const [targetVolume, setTargetVolume] = useState(0);
   const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
+  const [isCommandLoading, setIsCommandLoading] = useState(false);
 
   // --- Display Computed Values ---
   const displaySpeed = unitSystem === 'imperial' ? speed * 0.264172 : speed;
@@ -352,7 +353,7 @@ export default function App() {
         try {
           data = JSON.parse(cleanedJson);
         } catch (e) {
-           throw new Error(`Invalid response from API. Status: ${response.status}`);
+           throw new Error(`IP ${gatewayIp} returned a webpage instead of an API response! Status: ${response.status}. Raw: ${rawText.substring(0, 100)}`);
         }
 
         if (data.result === 'error' && data.message) {
@@ -381,6 +382,7 @@ export default function App() {
                volume: tl.vol || 0,
                is_fall: tl.fall === true,
                is_broken: tl.broken === true,
+               remain_duration: tl.remain_duration || (tl.watering && tl.watering.remaining ? tl.watering.remaining * 60 : 0)
              };
            } catch (e) {
              console.warn('Cloud API parsing issue', e);
@@ -388,14 +390,26 @@ export default function App() {
         }
         
         // Update states
+        const newIsWatering = data.is_watering ?? false;
+        
+        // Auto-restart logic check
+        if (stateRef.current.isWatering && !newIsWatering && stateRef.current.autoRestartNormal) {
+          addLog('info', 'Valve closed. Auto-restart is ON. Restarting Normal Run profile in 5 seconds...');
+          setTimeout(() => {
+             let vol = stateRef.current.normalRunVolume;
+             if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
+             if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
+          }, 5000);
+        }
+
         setIsRfLinked(data.is_rf_linked ?? true);
-                setIsFall(data.is_fall ?? false);
+        setIsFall(data.is_fall ?? false);
         setIsBroken(data.is_broken ?? false);
-                setIsLeak(data.is_leak ?? false);
+        setIsLeak(data.is_leak ?? false);
         setIsClog(data.is_clog ?? false);
         setSignal(data.signal ?? 0);
         setBattery(data.battery ?? 0);
-        setIsWatering(data.is_watering ?? false);
+        setIsWatering(newIsWatering);
         setSpeed(Number(data.speed ?? 0));
         setVolume(Number(data.volume ?? 0));
         setRemainDuration(Number(data.remain_duration ?? 0));
@@ -440,6 +454,7 @@ export default function App() {
       return;
     }
 
+    setIsCommandLoading(true);
     try {
       setErrorMsg(null);
       let response;
@@ -465,7 +480,7 @@ export default function App() {
             cmd: 6,
             gw_id: gatewayId,
             dev_id: deviceId,
-            duration: Math.round(durationMins), // Local API expects MINUTES
+            duration: Math.round(durationMins * 60), // Local API expects SECONDS
           }),
         });
       }
@@ -475,6 +490,8 @@ export default function App() {
     } catch (err: any) {
       addLog('danger', `API Start command failed: ${err.message}`);
       setErrorMsg(err.message);
+    } finally {
+      setIsCommandLoading(false);
     }
   };
 
@@ -492,6 +509,7 @@ export default function App() {
       return;
     }
 
+    setIsCommandLoading(true);
     try {
       setErrorMsg(null);
       let response;
@@ -526,8 +544,10 @@ export default function App() {
       setSpeed(0);
       addLog('success', 'Valve closed successfully by Gateway.');
     } catch (err: any) {
-      addLog('danger', `Valve turn off failed: ${err.message}`);
+      addLog('danger', `API Stop command failed: ${err.message}`);
       setErrorMsg(err.message);
+    } finally {
+      setIsCommandLoading(false);
     }
   };
 
@@ -832,31 +852,38 @@ export default function App() {
 {/* Chart moved to Right Column */}
 
           {/* Active Job Progress */}
-          {isWatering && targetVolume > 0 && (
+          {isWatering && (
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', border: '1px solid rgba(16, 185, 129, 0.4)', marginBottom: '24px' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-emerald)', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Active Run Progress</span>
+                <span>Active Run Progress {targetVolume === 0 && targetDuration === 0 && '(Started Externally)'}</span>
                 <span className="status-dot connected" style={{ marginRight: 0 }}></span>
               </h3>
               
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Time Remaining</span>
-                  <span style={{ fontWeight: 'bold' }}>{Math.floor(remainDuration / 3600)}h {Math.floor((remainDuration % 3600) / 60)}m</span>
+                  <span style={{ fontWeight: 'bold' }}>{remainDuration > 0 ? `${Math.floor(remainDuration / 3600)}h ${Math.floor((remainDuration % 3600) / 60)}m` : 'Unknown / Infinite'}</span>
                 </div>
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.min(100, Math.max(0, 100 - (remainDuration / Math.max(1, targetDuration)) * 100))}%`, height: '100%', background: 'var(--accent-emerald)', transition: 'width 1s linear' }}></div>
-                </div>
+                {targetDuration > 0 && (
+                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, Math.max(0, 100 - (remainDuration / Math.max(1, targetDuration)) * 100))}%`, height: '100%', background: 'var(--accent-emerald)', transition: 'width 1s linear' }}></div>
+                  </div>
+                )}
               </div>
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Volume Remaining</span>
-                  <span style={{ fontWeight: 'bold' }}>{Math.max(0, (unitSystem === 'imperial' ? (targetVolume * 0.264172) - displayVolume : targetVolume - displayVolume)).toFixed(1)} {volUnit}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>Volume Consumed</span>
+                  <span style={{ fontWeight: 'bold' }}>
+                    {displayVolume.toFixed(1)} {volUnit}
+                    {targetVolume > 0 && ` / ${(unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume).toFixed(1)} ${volUnit} Limit`}
+                  </span>
                 </div>
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.min(100, Math.max(0, (displayVolume / Math.max(1, unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume)) * 100))}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 1s linear' }}></div>
-                </div>
+                {targetVolume > 0 && (
+                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, Math.max(0, (displayVolume / Math.max(1, unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume)) * 100))}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 1s linear' }}></div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -885,16 +912,16 @@ export default function App() {
                 </div>
               </div>
               <button
-                disabled={isWatering}
+                disabled={isWatering || isCommandLoading}
                 onClick={() => {
                    let vol = normalRunVolume;
                    if (unitSystem === 'imperial') vol = vol / 0.264172; // Convert to liters for API
                    executeStartCommand((normalRunHours * 60) + normalRunMinutes, vol);
                 }}
                 className="btn-primary"
-                style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '0.95rem', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '0.95rem', background: isWatering ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #10b981, #059669)', color: isWatering ? '#888' : '#fff' }}
               >
-                ▶ START NORMAL RUN
+                {isCommandLoading ? '⏳ STARTING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '▶ START NORMAL RUN')}
               </button>
             </div>
 
@@ -921,7 +948,7 @@ export default function App() {
                 </div>
               </div>
               <button
-                disabled={isWatering}
+                disabled={isWatering || isCommandLoading}
                 onClick={() => {
                    let vol = inputVolume;
                    if (unitSystem === 'imperial') vol = vol / 0.264172; // Convert back to liters for API
@@ -934,9 +961,9 @@ export default function App() {
                    }
                 }}
                 className="btn-primary"
-                style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '0.95rem' }}
+                style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '0.95rem', background: isWatering ? 'rgba(255,255,255,0.1)' : undefined, color: isWatering ? '#888' : '#fff' }}
               >
-                💧 START TANK FILL
+                {isCommandLoading ? '⏳ STARTING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '💧 START TANK FILL')}
               </button>
             </div>
 
@@ -963,12 +990,12 @@ export default function App() {
                  </div>
                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                    <button
-                     disabled={isWatering}
+                     disabled={isWatering || isCommandLoading}
                      onClick={() => executeStartCommand(washDownDuration, 99999)}
                      className="btn-primary"
-                     style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', fontSize: '0.95rem' }}
+                     style={{ width: '100%', padding: '12px', background: isWatering ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', color: isWatering ? '#888' : '#fff', fontSize: '0.95rem' }}
                    >
-                     🌊 START WASH DOWN
+                     {isCommandLoading ? '⏳ STARTING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '🌊 START WASH DOWN')}
                    </button>
                  </div>
               </div>
@@ -979,11 +1006,12 @@ export default function App() {
             {/* Instant Off Button */}
             <div>
               <button
+                disabled={isCommandLoading}
                 onClick={() => executeStopCommand('manual')}
                 className="btn-danger-glow"
                 style={{ width: '100%', padding: '16px 20px', fontSize: '1.1rem' }}
               >
-                🛑 Instant Valve Close (OFF)
+                🛑 {isCommandLoading ? 'STOPPING...' : 'Instant Valve Close (OFF)'}
               </button>
             </div>
           </div>
