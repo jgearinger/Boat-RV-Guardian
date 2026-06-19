@@ -14,6 +14,10 @@ dist/index.html                   1.00 kB │ gzip:  0.52 kB
 dist/assets/index-D5ZkelLT.css    6.36 kB │ gzip:  2.10 kB
 dist/assets/index-7jZZxJ7L.js   233.11 kB │ gzip: 70.25 kB
 
-[32m✓ built in 141ms[39m
-[31m[fatal][39m The Capacitor CLI requires NodeJS >=22.0.0
-        Please install the latest LTS version.
+[32m✓ built in 130ms[39m
+✔ Copying web assets from dist to android/app/src/main/assets/public in 5.31ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 523.67μs
+✔ copy android in 23.01ms
+✔ Updating Android plugins in 3.03ms
+✔ update android in 23.35ms
+[info] Sync finished in 0.062s
