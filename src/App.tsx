@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauri() && options?.method === 'POST') {
@@ -17,7 +18,27 @@ const unifiedFetch = async (url: string, options?: any) => {
       status: 200
     };
   }
-  return await fetch(url, options);
+
+  // Use native Capacitor HTTP plugin on Android/iOS to bypass CORS entirely
+  if (Capacitor.isNativePlatform()) {
+    const res = await CapacitorHttp.request({
+      method: options?.method || 'GET',
+      url: url,
+      headers: options?.headers || {},
+      data: options?.body ? JSON.parse(options.body) : undefined,
+    });
+    return {
+      text: async () => typeof res.data === 'string' ? res.data : JSON.stringify(res.data),
+      json: async () => typeof res.data === 'string' ? JSON.parse(res.data) : res.data,
+      ok: res.status >= 200 && res.status < 300,
+      status: res.status
+    };
+  }
+
+  // Browser fetch fallback
+  const res = await fetch(url, options);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res;
 };
 
 interface AlertLog {
@@ -651,9 +672,6 @@ export default function App() {
 
             {/* Header Action Buttons */}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setShowSimulatorModal(true)} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                🎮 SIMULATOR
-              </button>
               <button onClick={() => setShowSettingsModal(true)} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 ⚙️ SETTINGS
               </button>
