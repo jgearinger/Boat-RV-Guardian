@@ -25,24 +25,14 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: Sync Capacitor Android
-        run: npm run android:sync > sync-log.txt 2>&1 || true
+        run: npm run android:sync
 
       - name: Build Android APK
         working-directory: ./android
-        run: ./gradlew assembleDebug --stacktrace > build-log.txt 2>&1 || true
-
-      - name: Upload Logs to Repo
-        if: always()
-        run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          cp android/build-log.txt ./build-log.txt || true
-          git add sync-log.txt build-log.txt
-          git commit -m "ci: Push logs for debug" || true
-          git push
+        run: ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
