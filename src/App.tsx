@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
-import { Capacitor, CapacitorHttp } from '@capacitor/core';
+
+const APP_VERSION = '1.0.2';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauri() && options?.method === 'POST') {
@@ -10,7 +11,6 @@ const unifiedFetch = async (url: string, options?: any) => {
       ip, 
       payload: options.body || '' 
     });
-    // Create a fake Response object that matches what the app expects
     return {
       text: async () => rawText,
       json: async () => JSON.parse(rawText),
@@ -19,25 +19,10 @@ const unifiedFetch = async (url: string, options?: any) => {
     };
   }
 
-  // Use native Capacitor HTTP plugin on Android/iOS to bypass CORS entirely
-  if (Capacitor.isNativePlatform()) {
-    const res = await CapacitorHttp.request({
-      method: options?.method || 'GET',
-      url: url,
-      headers: options?.headers || {},
-      data: options?.body ? JSON.parse(options.body) : undefined,
-    });
-    return {
-      text: async () => typeof res.data === 'string' ? res.data : JSON.stringify(res.data),
-      json: async () => typeof res.data === 'string' ? JSON.parse(res.data) : res.data,
-      ok: res.status >= 200 && res.status < 300,
-      status: res.status
-    };
-  }
-
-  // Browser fetch fallback
+  // On Android/iOS, capacitor.config.ts has CapacitorHttp: { enabled: true }
+  // which auto-patches the global fetch() to use the native HTTP stack,
+  // bypassing WebView CORS restrictions entirely. No explicit import needed.
   const res = await fetch(url, options);
-  if (!res.ok) throw new Error('HTTP ' + res.status);
   return res;
 };
 
@@ -1286,6 +1271,23 @@ export default function App() {
                   </label>
                   <input type="checkbox" disabled={!canUseRealConnection} checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: !canUseRealConnection ? 'not-allowed' : 'pointer', accentColor: 'var(--accent-cyan)' }} />
                 </div>
+
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
+
+                {/* Update & Version */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>Boat &amp; RV Guardian v{APP_VERSION}</div>
+                  <a
+                    href="https://github.com/jgearinger/Boat-RV-Guardian/releases"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <button className="btn-secondary" style={{ width: '100%', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                      🔄 Check for Updates on GitHub
+                    </button>
+                  </a>
+                </div>
               </div>
            </div>
         </div>
@@ -1330,6 +1332,11 @@ export default function App() {
           <button onClick={() => setErrorMsg(null)} className="btn-secondary" style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }}>Dismiss</button>
         </div>
       )}
+
+      {/* Version Badge */}
+      <div style={{ position: 'fixed', bottom: '10px', right: '12px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', pointerEvents: 'none', userSelect: 'none', zIndex: 1 }}>
+        v{APP_VERSION}
+      </div>
     </div>
   );
 }
