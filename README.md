@@ -5,8 +5,11 @@ A beautiful, specialized smart dashboard that transforms the LinkTap ecosystem i
 Instead of dealing with generic gardening schedules, this app is specifically tailored for preventing catastrophic internal floods by monitoring marine and RV water hookups.
 
 ## 📥 Download App
-Get the native app for the best experience (required for Local API support):
-*   **Android (.apk)**, **macOS (.dmg)**, and **Windows (.exe)** are available on the [Releases Page](https://github.com/jgearinger/Boat-RV-Guardian/releases).
+Get the native app for the best experience (required for Local API support). All versions are available on the [GitHub Releases Page](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest).
+
+[![Download Android APK](https://img.shields.io/badge/Download-Android_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest)
+[![Download macOS DMG](https://img.shields.io/badge/Download-macOS_DMG-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest)
+[![Download Windows EXE](https://img.shields.io/badge/Download-Windows_EXE-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest)
 
 ## 🚀 Live Demo
 You can try the web dashboard right now in your browser (Simulator mode enabled):

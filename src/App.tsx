@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauri() && options?.method === 'POST') {
@@ -496,7 +496,7 @@ export default function App() {
             cmd: 6,
             gw_id: gatewayId,
             dev_id: deviceId,
-            duration: Math.round(durationMins * 60), // Local API expects SECONDS
+            duration: Math.round(durationMins), // Local API expects MINUTES
           }),
         });
       }
