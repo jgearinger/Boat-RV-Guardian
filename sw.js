@@ -15,6 +15,11 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Do not intercept non-GET requests or cross-origin API calls (like local Gateway IP)
+  if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then((response) => {
       return response || fetch(e.request);

@@ -1,1 +1,0 @@
-var e=async(e,t)=>{throw Error(`Tauri is not available in this environment`)};export{e as invoke};
