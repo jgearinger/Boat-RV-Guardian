@@ -154,6 +154,7 @@ export default function App() {
   // --- PWA Installation Support ---
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [manualRefresh, setManualRefresh] = useState(0);
 
   // Cache settings on change
   useEffect(() => {
@@ -383,11 +384,9 @@ export default function App() {
     };
 
     poll();
-    if (mockMode || isPollingActive) {
-      const timer = setInterval(poll, refreshInterval * 1000);
-      return () => clearInterval(timer);
-    }
-  }, [mockMode, gatewayIp, gatewayId, deviceId, refreshInterval, apiMode, cloudUsername, cloudApiKey, isPollingActive]);
+    const timer = setInterval(poll, refreshInterval * 1000);
+    return () => clearInterval(timer);
+  }, [apiMode, gatewayIp, gatewayId, deviceId, isPollingActive, refreshInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
 
   // --- API Action Commanders ---
   
@@ -1056,8 +1055,16 @@ export default function App() {
               <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Hardware Connections</h3>
-
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Hardware Connections</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className={`status-dot ${connectionStatus}`}></span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{connectionStatus === 'mock' ? 'MOCK MODE' : connectionStatus === 'connected' ? 'CONNECTED' : 'OFFLINE'}</span>
+                    <button onClick={() => setManualRefresh(r => r + 1)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '0.7rem', marginLeft: '8px', opacity: 0.8 }}>
+                      ↻ Refresh
+                    </button>
+                  </div>
+                </div>
                 {mockMode && (
                   <div style={{ background: 'rgba(255, 204, 0, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255, 204, 0, 0.4)', marginBottom: '4px' }}>
                     <span style={{ fontSize: '0.85rem', color: '#ffcc00' }}>⚠️ <strong>Note:</strong> Network settings are disabled because the Mock Simulator is active. Scroll down and disable Mock Mode to connect to real hardware.</span>
