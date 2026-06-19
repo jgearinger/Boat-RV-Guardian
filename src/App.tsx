@@ -28,7 +28,6 @@ export default function App() {
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '15'));
   const [isPollingActive, setIsPollingActive] = useState(() => localStorage.getItem('lt_is_polling') === 'true');
   const [mockMode, setMockMode] = useState(() => {
-    if (!canUseRealConnection) return true; // Force mock mode in public web build
     return localStorage.getItem('lt_mock') === 'true';
   });
 
@@ -1078,7 +1077,7 @@ export default function App() {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: mockMode ? 1 : 0.6 }}>
                   <label className="form-label" style={{ margin: 0 }}>Simulate Locally (Mock Mode)</label>
-                  <input type="checkbox" disabled={!canUseRealConnection} checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: !canUseRealConnection ? 'not-allowed' : 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                  <input type="checkbox" checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
                 </div>
               </div>
            </div>
