@@ -4,6 +4,14 @@ A beautiful, specialized smart dashboard that transforms the LinkTap ecosystem i
 
 Instead of dealing with generic gardening schedules, this app is specifically tailored for preventing catastrophic internal floods by monitoring marine and RV water hookups.
 
+## 📥 Download App
+Get the native app for the best experience (required for Local API support):
+*   **Android (.apk)**, **macOS (.dmg)**, and **Windows (.exe)** are available on the [Releases Page](https://github.com/jgearinger/Boat-RV-Guardian/releases).
+
+## 🚀 Live Demo
+You can try the web dashboard right now in your browser (Simulator mode enabled):
+👉 **[Launch Live Demo](https://jgearinger.github.io/Boat-RV-Guardian/)**
+
 ## Features
 
 *   **Flooding Auto-Guard Sentry**: Runs locally in your browser. Constantly monitors water flow rate and pipe integrity. If the flow speed exceeds your safety limit (e.g. from a burst pipe inside the boat), it immediately shuts off the main valve.
