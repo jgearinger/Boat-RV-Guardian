@@ -1,16 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
-import { isTauri, invoke } from '@tauri-apps/api/core';
+const isTauriEnv = () => typeof window !== 'undefined' && !!(window as any).__TAURI_INTERIPC__;
+
+const invokeTauri = async (cmd: string, args?: any) => {
+  if (isTauriEnv()) {
+    const { invoke } = await import('@tauri-apps/api/core');
+    return invoke(cmd, args);
+  }
+  throw new Error("Tauri API not available");
+};
 
 const APP_VERSION = '1.0.9';
 
 const unifiedFetch = async (url: string, options?: any) => {
-  if (isTauri() && options?.method === 'POST') {
+  if (isTauriEnv() && options?.method === 'POST') {
     // Extract IP from URL (e.g. http://192.168.1.100/api.shtml)
     const ip = url.replace('http://', '').split('/')[0];
-    const rawText: string = await invoke('raw_linktap_post', { 
+    const rawText: string = await invokeTauri('raw_linktap_post', { 
       ip, 
       payload: options.body || '' 
-    });
+    }) as string;
     return {
       text: async () => rawText,
       json: async () => JSON.parse(rawText),
@@ -66,7 +74,7 @@ interface FlowData {
 
 export default function App() {
   // --- Environment Detection for CORS/Network Safety ---
-  const isNativeApp = isTauri() || typeof (window as any).Capacitor !== 'undefined';
+  const isNativeApp = isTauriEnv() || typeof (window as any).Capacitor !== 'undefined';
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canUseRealConnection = isNativeApp || isLocalhost;
 
@@ -424,7 +432,7 @@ export default function App() {
 
       } catch (err: any) {
         setConnectionStatus('disconnected');
-        const env = isTauri() ? '(Native Proxy)' : '(Browser)';
+        const env = isTauriEnv() ? '(Native Proxy)' : '(Browser)';
         const errMsg = err instanceof Error ? err.message : (err && err.message ? err.message : String(err));
         setErrorMsg(`Failed to connect to gateway ${env}: ${errMsg}`);
       }
