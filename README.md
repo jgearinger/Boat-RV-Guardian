@@ -18,6 +18,11 @@ Instead of dealing with generic gardening schedules, this app is specifically ta
 
 ## 🛠 Hardware Setup & Compatibility
 
+> [!IMPORTANT]  
+> **Physical Setup is Crucial:** To properly protect your Boat or RV from flooding, the smart valve must be placed at the source spigot, not on the vehicle inlet!
+> 
+> 📖 **[Read the Full Physical Setup & Best Practices Guide](PHYSICAL_SETUP.md)**
+
 ### Supported Hardware
 This application utilizes advanced API endpoints that are only available on newer LinkTap hardware.
 *   **Gateway**: You must have the **LinkTap G2S** Gateway or newer.
