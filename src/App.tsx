@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauri() && options?.method === 'POST') {
@@ -19,9 +19,28 @@ const unifiedFetch = async (url: string, options?: any) => {
     };
   }
 
-  // On Android/iOS, capacitor.config.ts has CapacitorHttp: { enabled: true }
-  // which auto-patches the global fetch() to use the native HTTP stack,
-  // bypassing WebView CORS restrictions entirely. No explicit import needed.
+  // On Android/iOS, try to use native HTTP to bypass all WebView CORS
+  if (typeof (window as any).Capacitor !== 'undefined') {
+    const Cap = (window as any).Capacitor;
+    if (Cap.isNativePlatform() && Cap.Plugins && Cap.Plugins.CapacitorHttp) {
+      const res = await Cap.Plugins.CapacitorHttp.request({
+        method: options?.method || 'GET',
+        url: url,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options?.headers || {})
+        },
+        data: options?.body ? JSON.parse(options.body) : undefined,
+      });
+      return {
+        text: async () => typeof res.data === 'string' ? res.data : JSON.stringify(res.data),
+        json: async () => typeof res.data === 'string' ? JSON.parse(res.data) : res.data,
+        ok: res.status >= 200 && res.status < 300,
+        status: res.status
+      };
+    }
+  }
+
   const res = await fetch(url, options);
   return res;
 };
