@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-const isTauriEnv = () => typeof window !== 'undefined' && !!(window as any).__TAURI_INTERIPC__;
+const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
 
 const invokeTauri = async (cmd: string, args?: any) => {
   if (isTauriEnv()) {
@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.14';
+const APP_VERSION = '1.0.15';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST') {
