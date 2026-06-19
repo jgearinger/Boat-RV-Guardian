@@ -1,6 +1,6 @@
 {
-  "name": "LinkTap Boat & RV Guardian",
-  "short_name": "LinkTap Guardian",
+  "name": "Boat & RV Guardian",
+  "short_name": "Boat Guardian",
   "description": "Smart local water safety dashboard for boats and RVs using LinkTap flow sensors.",
   "start_url": "/",
   "display": "standalone",

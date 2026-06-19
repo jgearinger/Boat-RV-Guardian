@@ -60,7 +60,7 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState<string>('Never');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [logs, setLogs] = useState<AlertLog[]>([
-    { time: new Date().toLocaleTimeString(), type: 'info', message: 'LinkTap Boat Guard dashboard initialized.' },
+    { time: new Date().toLocaleTimeString(), type: 'info', message: 'Boat Guard dashboard initialized.' },
     { time: new Date().toLocaleTimeString(), type: 'info', message: 'Mock Mode enabled by default. Simulate API events below.' }
   ]);
       const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -560,7 +560,7 @@ export default function App() {
                 BOAT AND RV GUARDIAN
               </h1>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                A free app for using LinkTap as a burst pipe auto shutoff
+                A free app for using your smart valve as a burst pipe auto shutoff
               </p>
             </div>
           </div>
@@ -618,7 +618,7 @@ export default function App() {
             <div className="install-banner">
               <div>
                 <h3 style={{ fontSize: '0.95rem', fontWeight: 'bold', marginBottom: '4px' }}>Install PWA App</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Add LinkTap Guardian to your home screen for quick offline boat monitoring.</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Add Boat Guardian to your home screen for quick offline boat monitoring.</p>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={handleInstallClick} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>Install</button>
@@ -1019,8 +1019,8 @@ export default function App() {
 
                 {apiMode === 'cloud' && !mockMode && (
                   <>
-                    <div><label className="form-label">Cloud Username</label><input type="text" className="form-input" value={cloudUsername} onChange={(e) => { setCloudUsername(e.target.value); setIsPollingActive(false); }} placeholder="LinkTap App Username" /></div>
-                    <div><label className="form-label">Cloud API Key</label><input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="From LinkTap App Settings" /></div>
+                    <div><label className="form-label">Cloud Username</label><input type="text" className="form-input" value={cloudUsername} onChange={(e) => { setCloudUsername(e.target.value); setIsPollingActive(false); }} placeholder="App Username" /></div>
+                    <div><label className="form-label">Cloud API Key</label><input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="From App Settings" /></div>
                   </>
                 )}
 
