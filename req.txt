@@ -1,0 +1,6 @@
+POST /api.shtml HTTP/1.1
+host: 172.31.0.245
+content-length: 52
+content-type: application/json
+
+{"cmd":3,"gw_id":"GW_02_MOCK","dev_id":"TAP_MOCK_1"}

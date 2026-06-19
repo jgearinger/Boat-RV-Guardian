@@ -1,4 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
+import { isTauri, invoke } from '@tauri-apps/api/core';
+
+const unifiedFetch = async (url: string, options?: any) => {
+  if (isTauri() && options?.method === 'POST') {
+    // Extract IP from URL (e.g. http://192.168.1.100/api.shtml)
+    const ip = url.replace('http://', '').split('/')[0];
+    const rawText: string = await invoke('raw_linktap_post', { 
+      ip, 
+      payload: options.body || '' 
+    });
+    // Create a fake Response object that matches what the app expects
+    return {
+      text: async () => rawText,
+      json: async () => JSON.parse(rawText),
+      ok: true,
+      status: 200
+    };
+  }
+  return await fetch(url, options);
+};
 
 interface AlertLog {
   time: string;
@@ -13,7 +33,7 @@ interface FlowData {
 
 export default function App() {
   // --- Environment Detection for CORS/Network Safety ---
-  const isNativeApp = typeof (window as any).__TAURI__ !== 'undefined' || typeof (window as any).Capacitor !== 'undefined';
+  const isNativeApp = isTauri() || typeof (window as any).Capacitor !== 'undefined';
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canUseRealConnection = isNativeApp || isLocalhost;
 
@@ -28,6 +48,7 @@ export default function App() {
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '15'));
   const [isPollingActive, setIsPollingActive] = useState(() => localStorage.getItem('lt_is_polling') === 'true');
   const [mockMode, setMockMode] = useState(() => {
+    if (!canUseRealConnection) return true;
     return localStorage.getItem('lt_mock') === 'true';
   });
 
@@ -69,7 +90,7 @@ export default function App() {
   const handleDiscover = async () => {
     setIsDiscovering(true);
     try {
-      const res = await fetch('https://www.link-tap.com/api/getAllDevices', {
+      const res = await unifiedFetch('https://www.link-tap.com/api/getAllDevices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey })
@@ -112,6 +133,7 @@ export default function App() {
   const [delayedStartSecs, setDelayedStartSecs] = useState(15);
   const [washDownDuration, setWashDownDuration] = useState(30);
   const [normalRunHours, setNormalRunHours] = useState(24);
+  const [normalRunMinutes, setNormalRunMinutes] = useState(0);
   const [normalRunVolume, setNormalRunVolume] = useState(300);
   const [autoRestartNormal, setAutoRestartNormal] = useState(false);
   const [targetDuration, setTargetDuration] = useState(0);
@@ -216,10 +238,10 @@ export default function App() {
   }, [alertOffline, isRfLinked, autoGuardEnabled]);
 
   const commandersRef = useRef({ start: null as any });
-  const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunVolume, unitSystem });
+  const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem });
   useEffect(() => {
-    stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunVolume, unitSystem };
-  }, [isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunVolume, unitSystem]);
+    stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem };
+  }, [isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem]);
 
   // --- Real-time Polling Logic ---
   useEffect(() => {
@@ -251,7 +273,7 @@ export default function App() {
                  setTimeout(() => {
                     let vol = stateRef.current.normalRunVolume;
                     if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
-                    if (commandersRef.current.start) commandersRef.current.start(stateRef.current.normalRunHours * 60, vol);
+                    if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
                  }, 5000);
               }
               return 0;
@@ -271,13 +293,13 @@ export default function App() {
         // LinkTap local HTTP API POST endpoint
         let response;
         if (apiMode === 'cloud') {
-           response = await fetch('https://www.link-tap.com/api/getAllDevices', {
+           response = await unifiedFetch('https://www.link-tap.com/api/getAllDevices', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey })
            });
         } else {
-           response = await fetch(`http://${gatewayIp}/api.shtml`, {
+           response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({ cmd: 3, gw_id: gatewayId, dev_id: deviceId })
@@ -301,6 +323,14 @@ export default function App() {
 
         if (data.result === 'error' && data.message) {
            throw new Error(data.message);
+        }
+        
+        if (apiMode === 'local' && data.ret !== undefined && data.ret !== 0) {
+           let errStr = "Unknown Error";
+           if (data.ret === 1) errStr = "Device ID not found";
+           if (data.ret === 2) errStr = "Device Offline";
+           if (data.ret === 3) errStr = "Invalid Gateway ID or Device ID";
+           throw new Error(`Gateway returned Error Code ${data.ret} (${errStr}). Please verify your Gateway and Device IDs are exactly 16-character hex strings.`);
         }
         if (!response.ok) {
            throw new Error(`HTTP Error status: ${response.status}`);
@@ -346,7 +376,9 @@ export default function App() {
 
       } catch (err: any) {
         setConnectionStatus('disconnected');
-        setErrorMsg(`Failed to connect to gateway: ${err.message}. (Check CORS configurations or try Mock Mode)`);
+        const env = isTauri() ? '(Native Proxy)' : '(Browser)';
+        const errMsg = err instanceof Error ? err.message : (err && err.message ? err.message : String(err));
+        setErrorMsg(`Failed to connect to gateway ${env}: ${errMsg}`);
       }
     };
 
@@ -378,7 +410,7 @@ export default function App() {
 
     try {
       setErrorMsg(null);
-      const response = await fetch(`http://${gatewayIp}/api.shtml`, {
+      const response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -414,7 +446,7 @@ export default function App() {
 
     try {
       setErrorMsg(null);
-      const response = await fetch(`http://${gatewayIp}/api.shtml`, {
+      const response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -778,7 +810,7 @@ export default function App() {
               <div style={{ background: 'rgba(0,0,0,0.15)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '8px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Configured Target Time:</span>
-                  <span style={{ fontWeight: 'bold' }}>{normalRunHours} Hours</span>
+                  <span style={{ fontWeight: 'bold' }}>{normalRunHours} hr {normalRunMinutes} min</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '8px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Configured Volume Limit:</span>
@@ -794,7 +826,7 @@ export default function App() {
                 onClick={() => {
                    let vol = normalRunVolume;
                    if (unitSystem === 'imperial') vol = vol / 0.264172; // Convert to liters for API
-                   executeStartCommand(normalRunHours * 60, vol);
+                   executeStartCommand((normalRunHours * 60) + normalRunMinutes, vol);
                 }}
                 className="btn-primary"
                 style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '0.95rem', background: 'linear-gradient(135deg, #10b981, #059669)' }}
@@ -947,8 +979,11 @@ export default function App() {
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-emerald)' }}>Normal Run Profile</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label className="form-label">Duration (Hours)</label>
-                    <input type="number" min="1" className="form-input" value={normalRunHours} onChange={(e) => setNormalRunHours(Math.max(1, Number(e.target.value)))} />
+                    <label className="form-label">Duration</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input type="number" min="0" placeholder="Hrs" className="form-input" value={normalRunHours} onChange={(e) => setNormalRunHours(Math.max(0, Number(e.target.value)))} style={{ width: '50%' }} />
+                      <input type="number" min="0" max="59" placeholder="Mins" className="form-input" value={normalRunMinutes} onChange={(e) => setNormalRunMinutes(Math.min(59, Math.max(0, Number(e.target.value))))} style={{ width: '50%' }} />
+                    </div>
                   </div>
                   <div>
                     <label className="form-label">Volume Limit ({volUnit})</label>
@@ -1074,8 +1109,38 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <div><label className="form-label">Gateway ID</label><input type="text" disabled={mockMode} className="form-input" value={gatewayId} onChange={(e) => { setGatewayId(e.target.value); setIsPollingActive(false); }} /></div>
-                    <div><label className="form-label">TapLinker Device ID</label><input type="text" disabled={mockMode} className="form-input" value={deviceId} onChange={(e) => { setDeviceId(e.target.value); setIsPollingActive(false); }} /></div>
+                    <div>
+                      <label className="form-label">Gateway ID</label>
+                      <input 
+                        type="text" 
+                        disabled={mockMode} 
+                        className="form-input" 
+                        placeholder="e.g. 1485A036004B1200"
+                        maxLength={16}
+                        value={gatewayId} 
+                        onChange={(e) => { 
+                          setGatewayId(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16)); 
+                          setIsPollingActive(false); 
+                        }} 
+                      />
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Must be exactly 16 uppercase hex characters (0-9, A-F). No dashes.</div>
+                    </div>
+                    <div style={{ marginTop: '12px' }}>
+                      <label className="form-label">TapLinker Device ID</label>
+                      <input 
+                        type="text" 
+                        disabled={mockMode} 
+                        className="form-input" 
+                        placeholder="e.g. 6422F036004B1200"
+                        maxLength={16}
+                        value={deviceId} 
+                        onChange={(e) => { 
+                          setDeviceId(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16)); 
+                          setIsPollingActive(false); 
+                        }} 
+                      />
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Must be exactly 16 uppercase hex characters. No dashes.</div>
+                    </div>
                   </>
                 )}
 
@@ -1100,8 +1165,11 @@ export default function App() {
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: mockMode ? 1 : 0.6 }}>
-                  <label className="form-label" style={{ margin: 0 }}>Simulate Locally (Mock Mode)</label>
-                  <input type="checkbox" checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                  <label className="form-label" style={{ margin: 0 }}>
+                    Simulate Locally (Mock Mode)
+                    {!canUseRealConnection && <span style={{ color: 'var(--accent-red)', fontSize: '0.75rem', display: 'block' }}><br/>Hardware Disabled in Web Demo</span>}
+                  </label>
+                  <input type="checkbox" disabled={!canUseRealConnection} checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: !canUseRealConnection ? 'not-allowed' : 'pointer', accentColor: 'var(--accent-cyan)' }} />
                 </div>
               </div>
            </div>
