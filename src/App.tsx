@@ -257,7 +257,7 @@ export default function App() {
       
       if (triggered && isWatering) {
         addLog('danger', `⚠️ SAFETY SENTRY TRIGGERED: ${cause} Shutting down valve...`);
-        executeStopCommand();
+        executeStopCommand('limit');
       }
     }
   }, [speed, isBroken, isLeak, isWatering, autoGuardEnabled, maxFlowRate, displaySpeed, speedUnit]);
@@ -485,8 +485,8 @@ export default function App() {
   // cmd 7: Stop watering (Emergency Button)
   commandersRef.current.start = executeStartCommand;
 
-  const executeStopCommand = async () => {
-    addLog('warning', `⚠️ Initiating EMERGENCY VALVE SHUTDOWN (cmd: 7)...`);
+  const executeStopCommand = async (reason: 'manual' | 'limit' = 'manual') => {
+    addLog('warning', reason === 'limit' ? `⚠️ Valve turned off due to limit reached.` : `⚠️ Manual valve turn off initiated.`);
     
     if (mockMode) {
       setIsWatering(false);
@@ -530,7 +530,7 @@ export default function App() {
       setSpeed(0);
       addLog('success', 'Valve closed successfully by Gateway.');
     } catch (err: any) {
-      addLog('danger', `EMERGENCY SHUTOFF FAILED: ${err.message}`);
+      addLog('danger', `Valve turn off failed: ${err.message}`);
       setErrorMsg(err.message);
     }
   };
@@ -983,11 +983,11 @@ export default function App() {
             {/* Instant Off Button */}
             <div>
               <button
-                onClick={executeStopCommand}
+                onClick={() => executeStopCommand('manual')}
                 className="btn-danger-glow"
                 style={{ width: '100%', padding: '16px 20px', fontSize: '1.1rem' }}
               >
-                🛑 INSTANT OFF
+                🛑 Instant Valve Close (OFF)
               </button>
             </div>
           </div>
