@@ -74,7 +74,21 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey })
       });
-      const data = await res.json();
+      const rawText = await res.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (e) {
+        throw new Error(`Invalid response: ${res.status}`);
+      }
+      
+      if (data.result === 'error' && data.message) {
+        throw new Error(data.message);
+      }
+      if (!res.ok) {
+        throw new Error(data.message || `HTTP Error: ${res.status}`);
+      }
+
       if (data.devices && data.devices.length > 0) {
         setDiscoveredDevices(data.devices);
         if (!gatewayId || gatewayId === 'GW_02_MOCK') setGatewayId(data.devices[0].gatewayId);
@@ -270,17 +284,27 @@ export default function App() {
            });
         }
 
-        if (!response.ok) throw new Error(`HTTP Error status: ${response.status}`);
-        
-        // LinkTap occasionally wraps JSON response in HTML, strip it if needed
         let rawText = await response.text();
+        
         let cleanedJson = rawText;
         if (rawText.includes('<html') || rawText.includes('<body')) {
           const match = rawText.match(/\{[\s\S]*\}/);
           if (match) cleanedJson = match[0];
         }
 
-        let data = JSON.parse(cleanedJson);
+        let data;
+        try {
+          data = JSON.parse(cleanedJson);
+        } catch (e) {
+           throw new Error(`Invalid response from API. Status: ${response.status}`);
+        }
+
+        if (data.result === 'error' && data.message) {
+           throw new Error(data.message);
+        }
+        if (!response.ok) {
+           throw new Error(`HTTP Error status: ${response.status}`);
+        }
         if (apiMode === 'cloud' && data.devices) {
            try {
              const tl = data.devices[0].taplinker.find((t: any) => t.taplinkerId === deviceId) || data.devices[0].taplinker[0];
