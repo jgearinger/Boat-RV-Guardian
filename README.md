@@ -1,136 +1,66 @@
-# LinkTap Boat & RV Guardian ⚓🚐
+# Boat & RV Guardian 🚤🚐
 
-A high-performance, local-only PWA dashboard built using **React**, **TypeScript**, and **Vite**. This application polls the local HTTP API of a **LinkTap G2S wireless gateway** to monitor real-time water flow rates, volume consumption, signal quality, and battery parameters, specifically tuned for RV and marine safety (leak and pipe burst warnings to prevent sinking or flooding).
+A beautiful, specialized smart dashboard that transforms the LinkTap ecosystem into an advanced auto-shutoff and monitoring system for Boats and RVs. 
 
-![App Preview](public/app_icon.jpg)
+Instead of dealing with generic gardening schedules, this app is specifically tailored for preventing catastrophic internal floods by monitoring marine and RV water hookups.
 
-## Core Safety Features
+## Features
 
-*   **Real-time Flow Speed Gauge**: Displays current flow rates in Liters/minute with a dynamic wave visualization.
-*   **Canvas-based History Graph**: Renders a custom HTML5 canvas graph detailing the history of water usage trends.
-*   **Emergency Valve Shutoff (cmd: 7)**: A prominent glowing red panic button triggers immediate closure of the gateway's valve.
-*   **Safety Sentry Auto-Guard**: A local rule engine that monitors flow and automatically shuts off the valve if:
-    *   Flow rate exceeds a user-defined threshold (e.g., > 15 L/min).
-    *   Gateway signals a pipe rupture (`is_broken`).
-    *   Gateway signals a slow weeping leak (`is_leak`).
-*   **Mock Simulator Console**: Easily test safety functions (burst, slow leak, battery drop) in a simulated local state without being connected to physical hardware.
-*   **Progressive Web App (PWA)**: Fully responsive layouts, offline capability, and mobile-addable shortcut settings.
+*   **Flooding Auto-Guard Sentry**: Runs locally in your browser. Constantly monitors water flow rate and pipe integrity. If the flow speed exceeds your safety limit (e.g. from a burst pipe inside the boat), it immediately shuts off the main valve.
+*   **Offline & Theft Alerts**: Immediately warns you if the physical TapLinker loses connection or triggers a physical fall/tamper alarm.
+*   **Tank Fill Mode**: Precisely fill your onboard fresh water tanks. Set a target volume (e.g., 50 Gallons) and the valve will automatically shut off when the exact amount is reached. Features a visual progress ring and remaining time estimator.
+*   **Delayed Start**: Set a precise minutes/seconds countdown before a tank fill begins, giving you time to hook up hoses or walk away.
+*   **Wash Down Mode**: Instantly open the valve for a preset time (5m up to 24h) to wash down the deck or flush the engine.
+*   **Normal Run Mode**: An always-on or cycled profile for providing city water to your boat. You can set it to auto-restart its cycle.
+*   **API Agnostic**: Connect directly over your Local Network (`http://192.168.x.x`) for instant, ultra-low latency commands, or use the **LinkTap Cloud API** to monitor and control your water from anywhere in the world!
 
 ---
 
-## Getting Started
+## 🛠 Hardware Setup & Compatibility
 
-### 1. Install Dependencies
+### Supported Hardware
+This application utilizes advanced API endpoints that are only available on newer LinkTap hardware.
+*   **Gateway**: You must have the **LinkTap G2S** Gateway or newer.
+*   **TapLinker**: You must have a **TapLinker with Flow Meter** (e.g., G2S TapLinker). Older generations (like G1) do not report real-time flow speed and cannot trigger the burst pipe Sentry.
+
+### Connecting the App to your Hardware
+You can use the **Cloud API** (works anywhere) or the **Local API** (works only on your home network/boat router).
+
+#### Option 1: Cloud API (Recommended)
+This is the easiest method and allows the dashboard to be used from any web browser without security restrictions.
+1. Open the official LinkTap Mobile App.
+2. Go to **Settings** -> **API Configuration**.
+3. Generate an API Key. Note your **Username** and **API Key**.
+4. Open the **Boat & RV Guardian** dashboard.
+5. Open **Settings** -> **Hardware Connections**.
+6. Select **Cloud API** from the dropdown.
+7. Enter your Username and API Key, then click **📡 Auto-Discover Devices**.
+8. Select your Gateway and TapLinker from the new dropdowns, and click **▶ Apply & Connect**.
+
+#### Option 2: Local HTTP API (Native App / Localhost only)
+The Local API is incredibly fast but does not work on public web versions (like GitHub Pages) due to browser CORS security policies. 
+1. Assign a **Static IP** to your LinkTap Gateway via your router's DHCP reservation page.
+2. Ensure you know your Gateway's IP address (e.g., `192.168.1.100`).
+3. You will need your 16-character **Gateway ID** and **TapLinker ID** (printed on the stickers on the back of the physical devices).
+4. Enter these into the Hardware Connections panel and click **▶ Apply & Connect**.
+
+---
+
+## 🌐 Web Version Notice
+If you are using the public web-hosted version of this app (e.g., on GitHub Pages), **the Local HTTP API is disabled**. Modern web browsers physically block websites on the internet from connecting directly to local devices (like `192.168.x.x`) for security reasons. 
+
+To use the Local API, you must either download the native desktop/mobile app version of this dashboard or run the source code on your local machine using Node.js.
+
+## Running Locally for Development
+
 ```bash
 npm install
-```
-
-### 2. Start the Local Server
-```bash
 npm run dev
 ```
-Open your browser to the URL displayed (usually `http://localhost:5173`).
 
-### 3. Build for Production
-To bundle the static application for GitHub hosting or local compilation:
+## Building for Production / GitHub Pages
+
 ```bash
 npm run build
 ```
-
----
-
-## Local LinkTap G2S API Integration
-
-The app communicates directly with your local LinkTap G2S gateway (e.g., `GW_02`) via HTTP POST requests on your local network.
-
-*   **Endpoint URL**: `http://<GATEWAY_IP>/api.shtml`
-*   **Method**: `POST`
-*   **Content-Type**: `application/json`
-
-### Command Examples
-
-#### 1. Retrieve Status (`cmd: 3`)
-**Request:**
-```json
-{
-  "cmd": 3,
-  "gw_id": "GW_YOUR_ID",
-  "dev_id": "TAP_YOUR_ID"
-}
-```
-
-**Response (JSON, sometimes wrapped inside HTML page):**
-```json
-{
-  "dev_id": "71577F1F004B1200",
-  "is_rf_linked": true,
-  "is_flm_plugin": true,
-  "is_fall": false,
-  "is_broken": false,
-  "is_cutoff": false,
-  "is_leak": false,
-  "is_clog": false,
-  "signal": 85,
-  "battery": 95,
-  "is_watering": false,
-  "speed": 0.00,
-  "volume": 0.00,
-  "remain_duration": 0
-}
-```
-
-#### 2. Open Valve (`cmd: 6`)
-**Request:**
-```json
-{
-  "cmd": 6,
-  "gw_id": "GW_YOUR_ID",
-  "dev_id": "TAP_YOUR_ID",
-  "duration": 15
-}
-```
-
-#### 3. Close Valve (Emergency Shutoff - `cmd: 7`)
-**Request:**
-```json
-{
-  "cmd": 7,
-  "gw_id": "GW_YOUR_ID",
-  "dev_id": "TAP_YOUR_ID"
-}
-```
-
----
-
-## Handling Browser CORS Issues
-
-Because this dashboard is built as a static client-side web application, modern web browsers will enforce **CORS (Cross-Origin Resource Sharing)** safety rules. This means a webpage loaded from a hosted environment (like GitHub Pages or localhost) may be blocked from sending direct `fetch()` POST requests to your local IP address (e.g., `192.168.1.100`) because the Gateway does not append CORS headers in its responses.
-
-### Solutions:
-1.  **Development Extension**: Install a browser extension such as *Allow CORS: Access-Control-Allow-Origin* to bypass browser checks during local testing.
-2.  **Lightweight Node Proxy**: Run a basic proxy script on your machine to bypass the browser constraint:
-    ```javascript
-    // save as proxy.js and run "node proxy.js"
-    const express = require('express');
-    const cors = require('cors');
-    const fetch = require('node-fetch');
-    const app = express();
-
-    app.use(cors());
-    app.use(express.json());
-
-    app.post('/api', async (req, res) => {
-      try {
-        const response = await fetch('http://192.168.1.100/api.shtml', {
-          method: 'POST',
-          body: JSON.stringify(req.body)
-        });
-        const text = await response.text();
-        res.send(text);
-      } catch (err) {
-        res.status(500).send(err.message);
-      }
-    });
-
-    app.listen(3001, () => console.log("CORS Bypass Proxy active on port 3001"));
-    ```
+Push the `dist` folder to your static host.

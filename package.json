@@ -1,7 +1,8 @@
 {
-  "name": "linktap-boat-rv",
+  "name": "boat-rv-guardian",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "A smart dashboard for using LinkTap as a burst pipe auto-shutoff system for boats and RVs.",
   "type": "module",
   "scripts": {
     "dev": "vite",
