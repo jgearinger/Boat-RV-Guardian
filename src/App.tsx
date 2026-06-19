@@ -212,9 +212,9 @@ export default function App() {
       } else if (isLeak) {
         triggered = true;
         cause = 'Gateway reported a leak alarm!';
-      } else if (speed > maxFlowRate) {
-        triggered = true;
-        cause = `Flow rate (${speed.toFixed(1)} L/min) exceeded safety limit of ${maxFlowRate} L/min!`;
+      } else if (displaySpeed > maxFlowRate) {
+        // AutoGuard triggers a stop command
+        cause = `Flow rate (${displaySpeed.toFixed(1)} ${speedUnit}) exceeded safety limit of ${maxFlowRate} ${speedUnit}!`;
       }
       
       if (triggered && isWatering) {
@@ -222,7 +222,7 @@ export default function App() {
         executeStopCommand();
       }
     }
-  }, [speed, isBroken, isLeak, isWatering, autoGuardEnabled, maxFlowRate]);
+  }, [speed, isBroken, isLeak, isWatering, autoGuardEnabled, maxFlowRate, displaySpeed, speedUnit]);
 
   // Isolate Fall and Offline alerts to prevent infinite log loops when speed fluctuates
   useEffect(() => {
@@ -491,7 +491,8 @@ export default function App() {
     }
 
     // Find min and max
-    const maxVal = Math.max(10, ...flowHistory.map((d) => d.speed * 1.2));
+    const displayHistory = flowHistory.map(d => ({ ...d, speed: unitSystem === 'imperial' ? d.speed * 0.264172 : d.speed }));
+    const maxVal = Math.max(10, ...displayHistory.map((d) => d.speed * 1.2));
     
     // Draw grid lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
@@ -515,7 +516,7 @@ export default function App() {
     const graphWidth = width - paddingLeft - paddingRight;
     
     ctx.beginPath();
-    flowHistory.forEach((pt, idx) => {
+    displayHistory.forEach((pt, idx) => {
       const x = paddingLeft + (idx / (flowHistory.length - 1)) * graphWidth;
       const y = height - (pt.speed / maxVal) * (height - 20) - 10;
       
@@ -544,7 +545,7 @@ export default function App() {
     ctx.fill();
 
     // Label last data point
-    const lastPoint = flowHistory[flowHistory.length - 1];
+    const lastPoint = displayHistory[displayHistory.length - 1];
     const lastX = paddingLeft + graphWidth;
     const lastY = height - (lastPoint.speed / maxVal) * (height - 20) - 10;
     
@@ -683,7 +684,7 @@ export default function App() {
           )}
 
           {/* Alarm Banner if leak/burst is active */}
-          {(isBroken || isLeak || isFall || speed > maxFlowRate) && (
+          {(isBroken || isLeak || isFall || displaySpeed > maxFlowRate) && (
             <div className="glass-card danger" style={{ animation: 'pulse-red 1.5s infinite', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
@@ -702,7 +703,7 @@ export default function App() {
                   <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ff8b8b' }}>CRITICAL WATER ANOMALY</h2>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     {isBroken && '🚨 PIPE BREAK ALARM: Critical rupture flagged by flow sensor.'}
-                    {!isBroken && speed > maxFlowRate && `🚨 EXPENDITURE LIMIT: Flow rate (${speed.toFixed(1)} L/min) exceeds local safety threshold (${maxFlowRate} L/min).`}
+                    {!isBroken && displaySpeed > maxFlowRate && `🚨 EXPENDITURE LIMIT: Flow rate (${displaySpeed.toFixed(1)} ${speedUnit}) exceeds local safety threshold (${maxFlowRate} ${speedUnit}).`}
                     {isLeak && !isBroken && '⚠️ LEAK ALERT: Small trickle flow detected without schedule.'}
                     {isFall && '⚠️ HARDWARE ALARM: TapLinker physical fall or impact detected.'}
                   </p>
@@ -733,7 +734,7 @@ export default function App() {
               {/* Giant Digital Meter */}
               <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.02)', textAlign: 'center', position: 'relative' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Speed</span>
-                <div style={{ fontSize: '3rem', fontWeight: 800, color: speed > maxFlowRate ? 'var(--accent-red)' : 'var(--accent-cyan)', margin: '8px 0', textShadow: speed > maxFlowRate ? '0 0 15px rgba(239,68,68,0.3)' : '0 0 15px rgba(0,242,254,0.3)' }}>
+                <div style={{ fontSize: '3rem', fontWeight: 800, color: displaySpeed > maxFlowRate ? 'var(--accent-red)' : 'var(--accent-cyan)', margin: '8px 0', textShadow: displaySpeed > maxFlowRate ? '0 0 15px rgba(239,68,68,0.3)' : '0 0 15px rgba(0,242,254,0.3)' }}>
                   {displaySpeed.toFixed(1)}
                   <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '6px' }}>{speedUnit}</span>
                 </div>
@@ -980,9 +981,11 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
                     <label className="form-label">Duration</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input type="number" min="0" placeholder="Hrs" className="form-input" value={normalRunHours} onChange={(e) => setNormalRunHours(Math.max(0, Number(e.target.value)))} style={{ width: '50%' }} />
-                      <input type="number" min="0" max="59" placeholder="Mins" className="form-input" value={normalRunMinutes} onChange={(e) => setNormalRunMinutes(Math.min(59, Math.max(0, Number(e.target.value))))} style={{ width: '50%' }} />
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <input type="number" min="0" className="form-input" value={normalRunHours} onChange={(e) => setNormalRunHours(Math.max(0, Number(e.target.value)))} style={{ width: '40%', padding: '8px' }} />
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>hrs</span>
+                      <input type="number" min="0" max="59" className="form-input" value={normalRunMinutes} onChange={(e) => setNormalRunMinutes(Math.min(59, Math.max(0, Number(e.target.value))))} style={{ width: '40%', padding: '8px' }} />
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>mins</span>
                     </div>
                   </div>
                   <div>
@@ -1040,7 +1043,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Max Flow Speed Limit</span><span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{maxFlowRate} L/min</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Max Flow Speed Limit</span><span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{maxFlowRate} {speedUnit}</span></div>
                     <input type="range" min="5" max="35" className="form-input" style={{ padding: 0 }} value={maxFlowRate} onChange={(e) => setMaxFlowRate(Number(e.target.value))} />
                   </div>
                   <div>
