@@ -70,16 +70,25 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build APK
+      - name: Build Release APK
         working-directory: ./android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
 
-      - name: Rename APK
-        run: mv android/app/build/outputs/apk/debug/app-debug.apk boat-rv-guardian-debug.apk
+      - name: Decode Keystore and Sign APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SIGNING_KEY_ALIAS: boatguardian
+          SIGNING_KEY_PASSWORD: boatguardian
+          SIGNING_STORE_PASSWORD: boatguardian
+        run: |
+          echo $KEYSTORE_BASE64 | base64 --decode > android/app/release.keystore
+          export BUILD_TOOLS_VERSION=$(ls /usr/local/lib/android/sdk/build-tools/ | tail -n 1)
+          /usr/local/lib/android/sdk/build-tools/$BUILD_TOOLS_VERSION/apksigner sign --ks android/app/release.keystore --ks-key-alias $SIGNING_KEY_ALIAS --ks-pass pass:$SIGNING_STORE_PASSWORD --key-pass pass:$SIGNING_KEY_PASSWORD android/app/build/outputs/apk/release/app-release-unsigned.apk
+          mv android/app/build/outputs/apk/release/app-release-unsigned.apk boat-rv-guardian-release.apk
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           tag_name: ${{ github.ref_name }}
-          files: boat-rv-guardian-debug.apk
+          files: boat-rv-guardian-release.apk

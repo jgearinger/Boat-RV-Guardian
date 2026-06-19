@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { isTauri, invoke } from '@tauri-apps/api/core';
 
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauri() && options?.method === 'POST') {
@@ -23,21 +23,29 @@ const unifiedFetch = async (url: string, options?: any) => {
   if (typeof (window as any).Capacitor !== 'undefined') {
     const Cap = (window as any).Capacitor;
     if (Cap.isNativePlatform() && Cap.Plugins && Cap.Plugins.CapacitorHttp) {
-      const res = await Cap.Plugins.CapacitorHttp.request({
-        method: options?.method || 'GET',
-        url: url,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(options?.headers || {})
-        },
-        data: options?.body ? JSON.parse(options.body) : undefined,
-      });
-      return {
-        text: async () => typeof res.data === 'string' ? res.data : JSON.stringify(res.data),
-        json: async () => typeof res.data === 'string' ? JSON.parse(res.data) : res.data,
-        ok: res.status >= 200 && res.status < 300,
-        status: res.status
-      };
+      try {
+        const res = await Cap.Plugins.CapacitorHttp.request({
+          method: options?.method || 'GET',
+          url: url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': '*/*',
+            ...(options?.headers || {})
+          },
+          // Send exactly the string provided, do not parse to Object so it's not reformatted
+          data: options?.body,
+          connectTimeout: 5000,
+          readTimeout: 5000
+        });
+        return {
+          text: async () => typeof res.data === 'string' ? res.data : JSON.stringify(res.data),
+          json: async () => typeof res.data === 'string' ? JSON.parse(res.data) : res.data,
+          ok: res.status >= 200 && res.status < 300,
+          status: res.status
+        };
+      } catch (nativeErr: any) {
+        throw new Error(`Native HTTP Error (${url}): ${nativeErr.message || JSON.stringify(nativeErr)}`);
+      }
     }
   }
 
