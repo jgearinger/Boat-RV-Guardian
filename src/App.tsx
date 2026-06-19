@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.15';
+const APP_VERSION = '1.0.16';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST') {
@@ -100,10 +100,27 @@ export default function App() {
   const [gatewayId, setGatewayId] = useState(() => localStorage.getItem('lt_gateway_id') || 'GW_02_MOCK');
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || 'TAP_MOCK_1');
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '15'));
-  const [isPollingActive, setIsPollingActive] = useState(() => localStorage.getItem('lt_is_polling') === 'true');
+  const hasCustomSettings = () => {
+    const gw = localStorage.getItem('lt_gateway_id');
+    const dev = localStorage.getItem('lt_device_id');
+    const cloud = localStorage.getItem('lt_cloud_user');
+    return (gw && gw !== 'GW_02_MOCK') || (dev && dev !== 'TAP_MOCK_1') || !!cloud;
+  };
+
+  const [isPollingActive, setIsPollingActive] = useState(() => {
+    const stored = localStorage.getItem('lt_is_polling');
+    if (stored === 'true') return true;
+    if (hasCustomSettings()) return true;
+    return false;
+  });
+
   const [mockMode, setMockMode] = useState(() => {
     if (!canUseRealConnection) return true;
-    return localStorage.getItem('lt_mock') === 'true';
+    const stored = localStorage.getItem('lt_mock');
+    // If they explicitly turned mock mode ON recently, maybe respect it, but if they have custom settings, default to real connection.
+    if (stored === 'true' && !hasCustomSettings()) return true;
+    if (hasCustomSettings()) return false;
+    return true; // Default to mock mode out of the box
   });
 
   // --- Local Safety Sentry Config ---
