@@ -90,16 +90,15 @@ export default function App() {
   const isNativeApp = isTauriEnv() || typeof (window as any).Capacitor !== 'undefined';
 
   // --- Persistent Gateway & Device Configuration ---
-  const [apiMode, setApiMode] = useState<'local' | 'cloud'>(() => (localStorage.getItem('lt_api_mode') as 'local' | 'cloud') || 'local');
+  const [isSoftwareCutoffActive, setIsSoftwareCutoffActive] = useState(false);
   const [cloudUsername, setCloudUsername] = useState(() => localStorage.getItem('lt_cloud_user') || '');
   const [cloudApiKey, setCloudApiKey] = useState(() => localStorage.getItem('lt_cloud_key') || '');
   const [alertOffline, setAlertOffline] = useState(() => localStorage.getItem('lt_alert_offline') !== 'false');
-  const [gatewayIp, setGatewayIp] = useState(() => localStorage.getItem('lt_gateway_ip') || '192.168.1.100');
-  const [gatewayId, setGatewayId] = useState(() => localStorage.getItem('lt_gateway_id') || 'GW_02_MOCK');
-  const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || 'TAP_MOCK_1');
+  const [gatewayIp, setGatewayIp] = useState(() => localStorage.getItem('lt_gateway_ip') || '');
+  const [gatewayId, setGatewayId] = useState(() => localStorage.getItem('lt_gateway_id') || '');
+  const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || '');
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '5'));
-  // Minimum interval of 31 seconds for cloud API to respect rate limits
-  const effectiveInterval = apiMode === 'cloud' ? Math.max(31, refreshInterval) : refreshInterval;
+  const effectiveInterval = refreshInterval;
   const hasCustomSettings = () => {
     const gw = localStorage.getItem('lt_gateway_id');
     const dev = localStorage.getItem('lt_device_id');
@@ -273,7 +272,7 @@ export default function App() {
     localStorage.setItem('lt_unit', unitSystem);
     localStorage.setItem('lt_tz', timeZone);
     localStorage.setItem('lt_reset_time', resetTime);
-    localStorage.setItem('lt_api_mode', apiMode);
+    localStorage.setItem('lt_reset_time', resetTime);
     localStorage.setItem('lt_cloud_user', cloudUsername);
     localStorage.setItem('lt_cloud_key', cloudApiKey);
     localStorage.setItem('lt_alert_offline', alertOffline.toString());
@@ -306,7 +305,7 @@ export default function App() {
     localStorage.setItem('lt_notif_watering', notifyWatering.toString());
   }, [
     gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, 
-    maxDuration, maxFlowRate, apiMode, cloudUsername, cloudApiKey,
+    maxDuration, maxFlowRate, cloudUsername, cloudApiKey,
     inputDuration, inputVolume, delayedStartMins, delayedStartSecs, washDownDuration,
     normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
     targetDuration, targetVolume, isPollingActive, notificationsEnabled, alarmSound,
@@ -570,19 +569,52 @@ export default function App() {
       // Real network requests
       try {
         setErrorMsg(null);
-        // LinkTap local HTTP API POST endpoint
-        let response;
+        let data: any = null;
+        let usedCloud = false;
 
-        if (apiMode === 'cloud') {
-           // getWateringStatus has a 15-second rate limit. getAllDevices has a 5-minute rate limit.
-           // We poll getWateringStatus every 15s to get real-time flow.
-           response = await unifiedFetch('https://www.link-tap.com/api/getWateringStatus', {
+        // 1. Try Local API first (for extremely fast, real-time telemetry)
+        if (gatewayIp) {
+           try {
+             const localRes = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ cmd: 3, gw_id: gatewayId, dev_id: deviceId }),
+               timeout: 4000 // Short timeout so it falls back to cloud quickly if off-net
+             });
+             let rawText = await localRes.text();
+             let cleanedJson = rawText;
+             if (rawText.includes('<html') || rawText.includes('<body')) {
+               const match = rawText.match(/\{[\s\S]*\}/);
+               if (match) cleanedJson = match[0];
+             }
+             data = JSON.parse(cleanedJson);
+             
+             if (data.ret !== undefined && data.ret !== 0) {
+               throw new Error(`Local API Error Code ${data.ret}`);
+             }
+           } catch (e) {
+             console.warn("Local API poll failed, falling back to Cloud API", e);
+             data = null;
+           }
+        }
+
+        // 2. Fallback to Cloud API (If local fails, e.g., device not on same network)
+        if (!data && cloudUsername && cloudApiKey) {
+           usedCloud = true;
+           const cloudRes = await unifiedFetch('https://www.link-tap.com/api/getWateringStatus', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey, taplinkerId: deviceId })
            });
-
-           // Poll getAllDevices every 5 minutes (300000ms) to update Battery and Signal
+           data = await cloudRes.json();
+           
+           if (data.result === 'error' && data.message && data.message.toLowerCase().includes('error')) {
+               data = { status: { watering: null } }; // Mock an idle response
+           } else if (data.result === 'error') {
+               throw new Error(data.message);
+           }
+           
+           // Fetch battery/signal occasionally (Cloud API only provides this via a separate endpoint)
            if (Date.now() - (window as any).lastCloudDevicePoll > 300000 || !(window as any).lastCloudDevicePoll) {
                try {
                    const devRes = await unifiedFetch('https://www.link-tap.com/api/getAllDevices', {
@@ -598,53 +630,16 @@ export default function App() {
                        (window as any).cachedCloudStatus = tl.status;
                        (window as any).lastCloudDevicePoll = Date.now();
                    }
-               } catch (e) {
-                   console.warn('Failed to fetch battery/signal', e);
-               }
-           }
-        } else {
-           response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ cmd: 3, gw_id: gatewayId, dev_id: deviceId })
-           });
-        }
-
-        let rawText = await response.text();
-        
-        let cleanedJson = rawText;
-        if (rawText.includes('<html') || rawText.includes('<body')) {
-          const match = rawText.match(/\{[\s\S]*\}/);
-          if (match) cleanedJson = match[0];
-        }
-
-        let data;
-        try {
-          data = JSON.parse(cleanedJson);
-        } catch (e) {
-           throw new Error(`IP ${gatewayIp} returned a webpage instead of an API response! Status: ${response.status}. Raw: ${rawText.substring(0, 100)}`);
-        }
-
-        if (data.result === 'error' && data.message) {
-           // For getWateringStatus, "error" usually means it's not watering.
-           if (apiMode === 'cloud' && data.message.toLowerCase().includes('error')) {
-               data = { status: { watering: null } }; // Mock an idle response
-           } else {
-               throw new Error(data.message);
+               } catch (e) { console.warn('Failed to fetch battery/signal', e); }
            }
         }
-        
-        if (apiMode === 'local' && data.ret !== undefined && data.ret !== 0) {
-           let errStr = "Unknown Error";
-           if (data.ret === 1) errStr = "Device ID not found";
-           if (data.ret === 2) errStr = "Device Offline";
-           if (data.ret === 3) errStr = "Invalid Gateway ID or Device ID";
-           throw new Error(`Gateway returned Error Code ${data.ret} (${errStr}). Please verify your Gateway and Device IDs are exactly 16-character hex strings.`);
+
+        if (!data) {
+           throw new Error("Polling failed: Ensure Local IP or Cloud Credentials are configured correctly and network is reachable.");
         }
-        if (!response.ok) {
-           throw new Error(`HTTP Error status: ${response.status}`);
-        }
-        if (apiMode === 'cloud') {
+
+        // 3. Parse format based on source
+        if (usedCloud) {
            try {
              const st = data.status || data;
              data = {
@@ -667,7 +662,7 @@ export default function App() {
              console.warn('Cloud API parsing issue', e);
            }
         } else {
-           console.log("RAW LOCAL API POLLING DATA:", data);
+           // Local API parsing (native structure)
         }
         
         // LinkTap's firmware has battery and signal values swapped internally, 
@@ -842,24 +837,43 @@ export default function App() {
     setIsCommandLoading('start');
     try {
       setErrorMsg(null);
-      let response;
-      if (apiMode === 'cloud') {
-        response = await unifiedFetch('https://www.link-tap.com/api/activateInstantMode', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: cloudUsername,
-            apiKey: cloudApiKey,
-            gatewayId,
-            taplinkerId: deviceId,
-            action: true,
-            duration: durationMins, // Cloud API takes minutes
-            vol: Math.round(volumeLimitLiters), // Added volume limit parameter for Cloud API to match Local API
-            autoBack: true
-          }),
-        });
-      } else {
-        response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
+      let success = false;
+      let usedLocal = false;
+
+      // 1. Always attempt Cloud API first for maximum safety (hardware volume cutoffs)
+      if (cloudUsername && cloudApiKey) {
+        try {
+          const cloudRes = await unifiedFetch('https://www.link-tap.com/api/activateInstantMode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: cloudUsername,
+              apiKey: cloudApiKey,
+              gatewayId,
+              taplinkerId: deviceId,
+              action: true,
+              duration: durationMins, // Cloud API takes minutes
+              vol: Math.round(volumeLimitLiters), 
+              autoBack: true
+            }),
+          });
+          
+          if (!cloudRes.ok) throw new Error(`Cloud HTTP Error ${cloudRes.status}`);
+          const cloudData = await cloudRes.json();
+          if (cloudData.result === 'error') throw new Error(cloudData.message);
+          
+          success = true;
+          addLog('success', 'Cloud API Start command received by Gateway.');
+        } catch (e: any) {
+          addLog('warning', `Cloud API Start failed: ${e.message}. Falling back to Local API...`);
+        }
+      }
+
+      // 2. Fallback to Local API
+      if (!success) {
+        if (!gatewayIp) throw new Error("Cloud API failed and no Local Gateway IP configured for fallback.");
+        
+        const localRes = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -871,27 +885,20 @@ export default function App() {
             vol: Math.round(volumeLimitLiters) // Fallback just in case
           }),
         });
+        
+        if (!localRes.ok) throw new Error(`Local HTTP Error ${localRes.status}`);
+        // Local API usually returns JSON or HTML. Assume success if reached.
+        success = true;
+        usedLocal = true;
+        addLog('success', 'Local API Start command received by Gateway.');
       }
 
-      if (!response.ok) {
-        let errText = await response.text().catch(() => '');
-        try { const errJson = JSON.parse(errText); if (errJson.message) errText = errJson.message; } catch(e) {}
-        throw new Error(`HTTP Error: ${response.status} ${errText}`);
+      // 3. UI State Management
+      if (usedLocal && volumeLimitLiters > 0) {
+        setIsSoftwareCutoffActive(true);
+      } else {
+        setIsSoftwareCutoffActive(false);
       }
-      let text = await response.text();
-      let data: any = { result: 'ok' };
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        if (text.includes('<title>api</title>')) {
-           addLog('info', 'Gateway returned HTML instead of JSON. Assuming command success.');
-        } else {
-           throw new Error(`API returned invalid JSON: ${text.substring(0, 50)}...`);
-        }
-      }
-      if (data.result === 'error') throw new Error(`LinkTap API Error: ${data.message}`);
-      addLog('success', 'API Start command received by Gateway.');
-      
       const lockDuration = Math.max(30000, effectiveInterval * 1000 + 5000);
       commandTimeoutRef.current = setTimeout(() => {
          if (expectedWateringStateRef.current !== null) {
@@ -900,7 +907,7 @@ export default function App() {
          }
       }, lockDuration);
       
-      const refreshDelay = apiMode === 'cloud' ? 32000 : 2500;
+      const refreshDelay = 2500;
       setTimeout(() => setManualRefresh(Date.now()), refreshDelay); // Speed up next poll to detect change faster
     } catch (err: any) {
       addLog('danger', `API Start command failed: ${err.message}`);
@@ -932,23 +939,40 @@ export default function App() {
     setIsCommandLoading('stop');
     try {
       setErrorMsg(null);
-      let response;
-      if (apiMode === 'cloud') {
-        response = await unifiedFetch('https://www.link-tap.com/api/activateInstantMode', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: cloudUsername,
-            apiKey: cloudApiKey,
-            gatewayId,
-            taplinkerId: deviceId,
-            action: false,
-            duration: 0,
-            autoBack: true
-          }),
-        });
-      } else {
-        response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
+      let success = false;
+      let usedLocal = false;
+
+      // 1. Attempt Cloud API first
+      if (cloudUsername && cloudApiKey) {
+        try {
+          const cloudRes = await unifiedFetch('https://www.link-tap.com/api/activateInstantMode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: cloudUsername,
+              apiKey: cloudApiKey,
+              gatewayId,
+              taplinkerId: deviceId,
+              action: false,
+              duration: 0,
+              autoBack: true
+            }),
+          });
+          if (!cloudRes.ok) throw new Error(`Cloud HTTP Error ${cloudRes.status}`);
+          const cloudData = await cloudRes.json();
+          if (cloudData.result === 'error') throw new Error(cloudData.message);
+          
+          success = true;
+          addLog('success', 'Cloud API Stop command received by Gateway.');
+        } catch (e: any) {
+          addLog('warning', `Cloud API Stop failed: ${e.message}. Falling back to Local API...`);
+        }
+      }
+
+      // 2. Fallback to Local API
+      if (!success) {
+        if (!gatewayIp) throw new Error("Cloud API failed and no Local Gateway IP configured for fallback.");
+        const localRes = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -957,26 +981,15 @@ export default function App() {
             dev_id: deviceId,
           }),
         });
+        
+        if (!localRes.ok) throw new Error(`Local HTTP Error ${localRes.status}`);
+        success = true;
+        usedLocal = true;
+        addLog('success', 'Local API Stop command received by Gateway.');
       }
 
-      if (!response.ok) {
-        let errText = await response.text().catch(() => '');
-        try { const errJson = JSON.parse(errText); if (errJson.message) errText = errJson.message; } catch(e) {}
-        throw new Error(`HTTP Error: ${response.status} ${errText}`);
-      }
-      let text = await response.text();
-      let data: any = { result: 'ok' };
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        if (text.includes('<title>api</title>')) {
-           addLog('info', 'Gateway returned HTML instead of JSON. Assuming command success.');
-        } else {
-           throw new Error(`API returned invalid JSON: ${text.substring(0, 50)}...`);
-        }
-      }
-      if (data.result === 'error') throw new Error(`LinkTap API Error: ${data.message}`);
-      addLog('success', 'API Stop command received by Gateway.');
+      // 3. UI State Management
+      setIsSoftwareCutoffActive(false);
       
       const lockDuration = Math.max(30000, effectiveInterval * 1000 + 5000);
       commandTimeoutRef.current = setTimeout(() => {
@@ -986,7 +999,7 @@ export default function App() {
          }
       }, lockDuration);
       
-      const refreshDelay = apiMode === 'cloud' ? 32000 : 2500;
+      const refreshDelay = 2500;
       setTimeout(() => setManualRefresh(Date.now()), refreshDelay); // Speed up next poll to detect change faster
     } catch (err: any) {
       addLog('danger', `API Stop command failed: ${err.message}`);
@@ -1127,9 +1140,23 @@ export default function App() {
         </div>
       )}
       
+      {/* Software Cutoff Warning Banner */}
+      {isSoftwareCutoffActive && (
+        <div style={{ position: 'fixed', top: activeAlarmSound ? '60px' : 0, left: 0, right: 0, background: 'linear-gradient(90deg, #b91c1c, #991b1b)', color: '#fff', padding: '12px 20px', textAlign: 'center', zIndex: 9998, boxShadow: '0 4px 20px rgba(185, 28, 28, 0.5)', borderBottom: '2px solid rgba(255,255,255,0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '1.3rem' }}>⚠️</span>
+            <span style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '0.5px' }}>DANGER: SOFTWARE VOLUME CUTOFF ACTIVE</span>
+            <span style={{ fontSize: '1.3rem' }}>⚠️</span>
+          </div>
+          <div style={{ fontSize: '0.85rem', fontWeight: 500, opacity: 0.9 }}>
+            Valve was opened via Local API. <strong>DO NOT CLOSE THIS APP OR ALLOW YOUR MAC TO SLEEP</strong>, or your boat will flood! Connect to the Cloud for hardware-enforced protection.
+          </div>
+        </div>
+      )}
+      
       {/* Click anywhere handler for alarm */}
       {activeAlarmSound && alarmRepeatInterval !== 'once' && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, cursor: 'pointer' }} onClick={() => setActiveAlarmSound(null)} />
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9997, cursor: 'pointer' }} onClick={() => setActiveAlarmSound(null)} />
       )}
 
       {/* Top Header */}
@@ -1737,34 +1764,32 @@ export default function App() {
                 )}
                 
                 <div>
-                  <label className="form-label">API Connection Mode</label>
-                  <select className="form-input" value={apiMode} onChange={(e) => { setApiMode(e.target.value as 'local' | 'cloud'); setIsPollingActive(false); }} disabled={mockMode}>
-                    <option value="local">Local HTTP API (Faster, Requires local network)</option>
-                    <option value="cloud">Cloud API (Works anywhere, requires internet)</option>
-                  </select>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--accent-emerald)', marginBottom: '8px' }}>Hybrid API Configuration</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4' }}>
+                    Configure <strong>both</strong> connections for maximum safety and performance. The app routes commands via the Cloud to securely lock volume limits into the hardware, while using your Local network to pull lightning-fast telemetry.
+                  </p>
                 </div>
 
-                {!isNativeApp && apiMode === 'local' && !mockMode && (
+                {!isNativeApp && !mockMode && (
                   <div style={{ color: '#ffcc00', fontSize: '0.85rem', marginTop: '4px' }}>
-                    ⚠️ <strong>Using Local API in the browser?</strong> Modern browsers (CORS) block direct local connections. To avoid CORS errors, please install a Chrome extension like <a href="https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>"Allow CORS"</a> and enable it, or use our Native App instead!
+                    ⚠️ <strong>Running in Web Browser?</strong> Modern browsers block direct local connections. To avoid CORS errors, please install a Chrome extension like <a href="https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>"Allow CORS"</a>, or use the Native App!
                   </div>
                 )}
 
-                {apiMode === 'cloud' && !mockMode && (
+                {!mockMode && (
                   <>
-                    <div><label className="form-label">Cloud Username</label><input type="text" className="form-input" value={cloudUsername} onChange={(e) => { setCloudUsername(e.target.value); setIsPollingActive(false); }} placeholder="App Username" /></div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <label className="form-label" style={{ marginBottom: 0 }}>Cloud API Key</label>
-                      <input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="Paste API Key" />
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                        ℹ️ <strong>How to get your API Key:</strong> LinkTap does not allow retrieving the API key via the mobile app anymore. You must log into the <a href="https://www.link-tap.com/#!/api-for-developers" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>LinkTap Web Portal</a> on a computer, go to <strong>Settings</strong>, and generate your API Key there.
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                      <div><label className="form-label">Gateway Local IP Address</label><input type="text" className="form-input" value={gatewayIp} onChange={(e) => { setGatewayIp(e.target.value); setIsPollingActive(false); }} placeholder="e.g. 192.168.1.100" /></div>
+                      <div><label className="form-label">Cloud Username</label><input type="text" className="form-input" value={cloudUsername} onChange={(e) => { setCloudUsername(e.target.value); setIsPollingActive(false); }} placeholder="App Username" /></div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label className="form-label" style={{ marginBottom: 0 }}>Cloud API Key</label>
+                        <input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="Paste API Key" />
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                          ℹ️ <strong>How to get your API Key:</strong> LinkTap does not allow retrieving the API key via the mobile app anymore. You must log into the <a href="https://www.link-tap.com/#!/api-for-developers" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>LinkTap Web Portal</a> on a computer, go to <strong>Settings</strong>, and generate your API Key there.
+                        </div>
                       </div>
                     </div>
                   </>
-                )}
-
-                {apiMode === 'local' && !mockMode && (
-                  <div><label className="form-label">Gateway IP Address</label><input type="text" className="form-input" value={gatewayIp} onChange={(e) => { setGatewayIp(e.target.value); setIsPollingActive(false); }} placeholder="e.g. 192.168.1.100" /></div>
                 )}
                 
                 {discoveredDevices.length > 0 ? (
@@ -1832,7 +1857,7 @@ export default function App() {
                    {(!cloudUsername || !cloudApiKey) && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'center' }}>Enter Cloud Username & API Key above to enable auto-discovery.</div>}
                 </div>
                 
-                <div><label className="form-label">Polling Refresh Rate: {effectiveInterval}s</label><input type="range" min={apiMode === 'cloud' ? "31" : "2"} max={apiMode === 'cloud' ? "120" : "30"} className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
+                <div><label className="form-label">Local Polling Rate: {effectiveInterval}s</label><input type="range" min="2" max="30" className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
 
                 <button 
                   className="btn-primary" 
