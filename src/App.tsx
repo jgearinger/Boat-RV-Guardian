@@ -651,18 +651,19 @@ export default function App() {
                volume: st.vol || st.volume || 0,
                is_fall: false,
                is_broken: false,
-               remain_duration: st.remain_duration || st.remainingSeconds || st.remaining || (st.watering && st.watering.remaining ? st.watering.remaining * 60 : 0)
+               remain_duration: st.remain_duration || st.remainingSeconds || st.remaining || 
+                                (st.totalDuration ? (st.totalDuration * 60) - (st.onDuration || 0) : 0) || 
+                                (st.watering && st.watering.remaining ? st.watering.remaining * 60 : 0)
              };
            } catch (e) {
              console.warn('Cloud API parsing issue', e);
            }
+        } else if (apiMode === 'local') {
+          // LinkTap Local API actually returns battery in the signal field, and signal in the battery field.
+          const tempBattery = data.battery;
+          data.battery = data.signal;
+          data.signal = tempBattery;
         }
-
-        // LinkTap's firmware has battery and signal values swapped internally, 
-        // which propagates to both their Local and Cloud APIs.
-        const tempBattery = data.battery;
-        data.battery = data.signal;
-        data.signal = tempBattery;
         
         const newIsWatering = (data.is_watering === true || data.is_watering === 'true' || data.is_watering === 1 || data.is_watering === '1');
 
