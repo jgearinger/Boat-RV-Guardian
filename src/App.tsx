@@ -1141,8 +1141,8 @@ export default function App() {
                   <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{isRfLinked ? 'LINK OK' : 'LINK STUCK'}</div>
                 </div>
                 <div style={{ borderLeft: '3px solid var(--accent-emerald)', paddingLeft: '12px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Connection Status</span>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{!isFall && !isClog && !isBroken ? 'Stable' : 'ALERT'}</div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Device Mounting</span>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{!isFall && !isClog && !isBroken ? 'Secure' : 'ALERT'}</div>
                 </div>
               </div>
             </div>

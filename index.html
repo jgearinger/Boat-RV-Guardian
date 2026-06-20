@@ -43,6 +43,7 @@
     li { margin-bottom: 10px; }
     strong { color: #fff; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
     .downloads-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
     @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
   </style>
@@ -98,14 +99,32 @@
       </div>
     </section>
 
-    <section>
-      <h2>Hardware Requirements</h2>
-      <p>To use all features of the Guardian app, specific LinkTap hardware is required:</p>
-      <ul>
-        <li><strong>LinkTap Gateway (GW-01 or GW-02):</strong> Required to bridge your home Wi-Fi network to the LinkTap Valve and support the necessary Local API endpoints.</li>
-        <li><strong>LinkTap G2S Valve (TapLinker):</strong> Must be the G2S (or newer G1S/G4S) model because it includes a built-in flow meter. Older generations (like the G1) lack flow meters and cannot be used for volume-based auto-shutoffs.</li>
-        <li><strong>Water Pressure Regulator:</strong> (Recommended) Always install a standard RV/Boat water pressure regulator <em>after</em> the LinkTap valve to ensure the water pressure entering your RV or Boat is safely reduced to 40-50 PSI.</li>
-      </ul>
+    <section id="what-i-need">
+      <h2>What I Need (Hardware)</h2>
+      <p>To use all features of the Guardian app, specific LinkTap hardware is required. <em>(Note: Purchasing through the affiliate links below helps support the open-source project!)</em></p>
+      
+      <div class="grid-3">
+        <div class="card" style="text-align: center; display: flex; flex-direction: column;">
+          <img src="smart_valve.png" alt="LinkTap G2S Smart Valve" style="width: 100%; height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 15px;" />
+          <h3 style="color: var(--accent); margin-top: 0;">LinkTap G2S Valve</h3>
+          <p style="text-align: left; font-size: 0.95rem; color: var(--text-muted); flex-grow: 1;">Must be the G2S (or newer G1S/G4S) model because it includes a built-in flow meter to track exact gallons used. Older models cannot perform volume-based shutoffs.</p>
+          <a href="https://amzn.to/4emdjqX" target="_blank" rel="noopener noreferrer" class="btn" style="width: 100%; margin-top: 10px;">Buy on Amazon</a>
+        </div>
+
+        <div class="card" style="text-align: center; display: flex; flex-direction: column;">
+          <img src="wifi_gateway.png" alt="LinkTap Gateway" style="width: 100%; height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 15px;" />
+          <h3 style="color: var(--accent); margin-top: 0;">LinkTap Gateway</h3>
+          <p style="text-align: left; font-size: 0.95rem; color: var(--text-muted); flex-grow: 1;">Required to bridge your home Wi-Fi network to the Valve via Zigbee. It also provides the essential Local API endpoints for instant app communication.</p>
+          <a href="https://amzn.to/3SjpmwI" target="_blank" rel="noopener noreferrer" class="btn" style="width: 100%; margin-top: 10px;">Buy on Amazon</a>
+        </div>
+
+        <div class="card" style="text-align: center; display: flex; flex-direction: column;">
+          <img src="pressure_regulator.png" alt="Water Pressure Regulator" style="width: 100%; height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 15px;" />
+          <h3 style="color: var(--accent); margin-top: 0;">Water Pressure Regulator</h3>
+          <p style="text-align: left; font-size: 0.95rem; color: var(--text-muted); flex-grow: 1;">Highly recommended. Always install this standard regulator <em>after</em> the LinkTap valve to ensure the water pressure entering your RV or Boat is safely reduced (40-50 PSI).</p>
+          <a href="https://amzn.to/3SbgTf4" target="_blank" rel="noopener noreferrer" class="btn" style="width: 100%; margin-top: 10px;">Buy on Amazon</a>
+        </div>
+      </div>
     </section>
 
     <section>
