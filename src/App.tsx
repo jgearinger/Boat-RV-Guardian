@@ -137,6 +137,8 @@ export default function App() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('lt_notifications') === 'true');
   const [alarmSound, setAlarmSound] = useState<'siren' | 'beep' | 'off'>(() => (localStorage.getItem('lt_alarm_sound') as any) || 'beep');
   const [alarmVolume, setAlarmVolume] = useState(() => Number(localStorage.getItem('lt_alarm_vol') || '1.0'));
+  const [alarmRepeatInterval, setAlarmRepeatInterval] = useState<'once' | '5' | '15' | '30' | '60'>(() => (localStorage.getItem('lt_alarm_repeat') as any) || 'once');
+  const [activeAlarmSound, setActiveAlarmSound] = useState<string | null>(null);
   
   const [notifyAutoGuard, setNotifyAutoGuard] = useState(() => localStorage.getItem('lt_notif_autoguard') !== 'false');
   const [notifyFall, setNotifyFall] = useState(() => localStorage.getItem('lt_notif_fall') !== 'false');
@@ -288,18 +290,24 @@ export default function App() {
     localStorage.setItem('lt_notifications', notificationsEnabled.toString());
     localStorage.setItem('lt_alarm_sound', alarmSound);
     localStorage.setItem('lt_alarm_vol', alarmVolume.toString());
+    localStorage.setItem('lt_alarm_repeat', alarmRepeatInterval);
+    
+    // Auto-Guard settings
+    localStorage.setItem('lt_autoguard', autoGuardEnabled.toString());
+    localStorage.setItem('lt_maxdur', maxDuration.toString());
+    localStorage.setItem('lt_maxflow', maxFlowRate.toString());
+    
     localStorage.setItem('lt_notif_autoguard', notifyAutoGuard.toString());
     localStorage.setItem('lt_notif_fall', notifyFall.toString());
     localStorage.setItem('lt_notif_battery', notifyLowBattery.toString());
     localStorage.setItem('lt_notif_watering', notifyWatering.toString());
   }, [
     gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, 
-    maxFlowRate, maxDuration, unitSystem, timeZone, resetTime, enableHistory,
-    apiMode, cloudUsername, cloudApiKey, alertOffline,
+    maxDuration, maxFlowRate, apiMode, cloudUsername, cloudApiKey,
     inputDuration, inputVolume, delayedStartMins, delayedStartSecs, washDownDuration,
     normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
     targetDuration, targetVolume, isPollingActive, notificationsEnabled, alarmSound,
-    alarmVolume, notifyAutoGuard, notifyFall, notifyLowBattery, notifyWatering
+    alarmVolume, alarmRepeatInterval, notifyAutoGuard, notifyFall, notifyLowBattery, notifyWatering
   ]);
 
   useEffect(() => {
@@ -311,8 +319,18 @@ export default function App() {
     setLogs((prev) => [{ time: new Date().toLocaleTimeString(), type, message }, ...prev.slice(0, 49)]);
   };
 
-  const playSynthesizedAlarm = () => {
-    if (alarmSound === 'off') return;
+  useEffect(() => {
+    if (activeAlarmSound && alarmRepeatInterval !== 'once') {
+      const interval = setInterval(() => {
+        playSynthesizedAlarm(activeAlarmSound);
+      }, Number(alarmRepeatInterval) * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeAlarmSound, alarmRepeatInterval]);
+
+  const playSynthesizedAlarm = (soundOverride?: string) => {
+    const soundToPlay = soundOverride || alarmSound;
+    if (soundToPlay === 'off') return;
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const osc = ctx.createOscillator();
@@ -321,7 +339,7 @@ export default function App() {
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
       
-      if (alarmSound === 'siren') {
+      if (soundToPlay === 'siren') {
         osc.type = 'square';
         osc.frequency.setValueAtTime(400, ctx.currentTime);
         osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.5);
@@ -333,7 +351,7 @@ export default function App() {
         gainNode.gain.exponentialRampToValueAtTime(0.01 * alarmVolume, ctx.currentTime + 2.0);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 2.0);
-      } else if (alarmSound === 'beep') {
+      } else if (soundToPlay === 'beep') {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(1000, ctx.currentTime);
         gainNode.gain.setValueAtTime(1.0 * alarmVolume, ctx.currentTime);
@@ -352,7 +370,10 @@ export default function App() {
   };
 
   const triggerAlert = async (title: string, message: string, silent: boolean = false) => {
-    if (!silent) playSynthesizedAlarm();
+    if (!silent && alarmSound !== 'off') {
+      playSynthesizedAlarm(alarmSound);
+      setActiveAlarmSound(alarmSound);
+    }
     addLog(silent ? 'info' : 'danger', `${title}: ${message}`);
     
     if (!notificationsEnabled) return;
@@ -970,6 +991,20 @@ export default function App() {
 
   return (
     <div style={{ flex: 1, paddingBottom: '40px' }}>
+      {/* Active Alarm Banner */}
+      {activeAlarmSound && alarmRepeatInterval !== 'once' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, background: 'var(--accent-red)', color: '#fff', padding: '15px', textAlign: 'center', zIndex: 9999, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 20px rgba(239, 68, 68, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }} onClick={() => setActiveAlarmSound(null)}>
+          <span style={{ fontSize: '1.4rem' }}>🚨</span>
+          <span style={{ fontSize: '1.1rem', letterSpacing: '1px' }}>ALARM ACTIVE - CLICK ANYWHERE TO ACKNOWLEDGE & MUTE</span>
+          <span style={{ fontSize: '1.4rem' }}>🚨</span>
+        </div>
+      )}
+      
+      {/* Click anywhere handler for alarm */}
+      {activeAlarmSound && alarmRepeatInterval !== 'once' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, cursor: 'pointer' }} onClick={() => setActiveAlarmSound(null)} />
+      )}
+
       {/* Top Header */}
       <header style={{
         background: 'linear-gradient(180deg, var(--bg-secondary) 0%, rgba(4,8,20,0) 100%)',
@@ -1042,8 +1077,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      </header>
-
       {/* Main Content Area */}
       <main className="main-layout">
         
@@ -1499,13 +1532,25 @@ export default function App() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div>
-                      <label className="form-label">Warning Alarm Sound</label>
-                      <select className="form-input" value={alarmSound} onChange={(e) => setAlarmSound(e.target.value as any)}>
-                        <option value="siren">🚨 Siren (Loud)</option>
-                        <option value="beep">⚠️ Beep (Standard)</option>
-                        <option value="off">🔇 Silent</option>
-                      </select>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label className="form-label">Warning Alarm Sound</label>
+                        <select className="form-input" value={alarmSound} onChange={(e) => setAlarmSound(e.target.value as any)}>
+                          <option value="siren">🚨 Siren (Loud)</option>
+                          <option value="beep">⚠️ Beep (Standard)</option>
+                          <option value="off">🔇 Silent</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">Alarm Repeat</label>
+                        <select className="form-input" value={alarmRepeatInterval} onChange={(e) => setAlarmRepeatInterval(e.target.value as any)}>
+                          <option value="once">Once</option>
+                          <option value="5">Every 5 Seconds</option>
+                          <option value="15">Every 15 Seconds</option>
+                          <option value="30">Every 30 Seconds</option>
+                          <option value="60">Every 60 Seconds</option>
+                        </select>
+                      </div>
                     </div>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Alarm Volume</span><span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{Math.round(alarmVolume * 100)}%</span></div>
@@ -1568,7 +1613,7 @@ export default function App() {
                       <label className="form-label" style={{ marginBottom: 0 }}>Cloud API Key</label>
                       <input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="Paste API Key" />
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                        ℹ️ <strong>How to get your API Key:</strong> LinkTap does not allow retrieving the API key via the mobile app anymore. You must log into the <a href="https://www.link-tap.com" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>LinkTap Web Portal</a> on a computer, go to <strong>Settings</strong>, and generate your API Key there.
+                        ℹ️ <strong>How to get your API Key:</strong> LinkTap does not allow retrieving the API key via the mobile app anymore. You must log into the <a href="https://www.link-tap.com/#!/api-for-developers" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>LinkTap Web Portal</a> on a computer, go to <strong>Settings</strong>, and generate your API Key there.
                       </div>
                     </div>
                   </>
