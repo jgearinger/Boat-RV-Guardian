@@ -783,7 +783,13 @@ export default function App() {
         });
       }
 
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok) {
+        let errText = await response.text().catch(() => '');
+        try { const errJson = JSON.parse(errText); if (errJson.message) errText = errJson.message; } catch(e) {}
+        throw new Error(`HTTP Error: ${response.status} ${errText}`);
+      }
+      const data = await response.json();
+      if (data.result === 'error') throw new Error(`LinkTap API Error: ${data.message}`);
       addLog('success', 'API Start command received by Gateway.');
       
       const lockDuration = Math.max(30000, effectiveInterval * 1000 + 5000);
@@ -851,7 +857,13 @@ export default function App() {
         });
       }
 
-      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+      if (!response.ok) {
+        let errText = await response.text().catch(() => '');
+        try { const errJson = JSON.parse(errText); if (errJson.message) errText = errJson.message; } catch(e) {}
+        throw new Error(`HTTP Error: ${response.status} ${errText}`);
+      }
+      const data = await response.json();
+      if (data.result === 'error') throw new Error(`LinkTap API Error: ${data.message}`);
       addLog('success', 'API Stop command received by Gateway.');
       
       const lockDuration = Math.max(30000, effectiveInterval * 1000 + 5000);
