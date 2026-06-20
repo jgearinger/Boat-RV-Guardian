@@ -853,7 +853,8 @@ export default function App() {
             gw_id: gatewayId,
             dev_id: deviceId,
             duration: Math.round(durationMins * 60), // Local API expects SECONDS
-            vol: Math.round(volumeLimitLiters)
+            volume_limit: Math.round(volumeLimitLiters), // Local API expects 'volume_limit' not 'vol'
+            vol: Math.round(volumeLimitLiters) // Fallback just in case
           }),
         });
       }
