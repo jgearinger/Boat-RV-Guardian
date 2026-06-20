@@ -742,8 +742,7 @@ export default function App() {
         // Software-enforced volume cutoff
         // LinkTap hardware often ignores volume limits passed to cmd: 6, so we must enforce it here!
         if (newIsWatering && targetVolume > 0 && currentVolume > 0) {
-           const limitInApiUnits = stateRef.current.unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume;
-           if (currentVolume >= limitInApiUnits) {
+           if (currentVolume >= targetVolume) {
               if (commandersRef.current.stop && expectedWateringStateRef.current !== false) {
                  addLog('success', `Target volume limit reached. Sending software-enforced stop command.`);
                  commandersRef.current.stop('limit');
