@@ -1,25 +1,143 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/jpeg" href="./app_icon.jpg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#0d1527" />
-    <link rel="manifest" href="./manifest.json" />
-    <title>Boat & RV Guardian</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-      body {
-        background-color: #0a0f1d;
-        margin: 0;
-      }
-    </style>
-    <script type="module" crossorigin src="./assets/index-DZIoXQo8.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CV-DNJCX.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boat & RV Guardian - Documentation</title>
+  <link rel="icon" type="image/jpeg" href="app_icon.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #040814;
+      --bg-card: rgba(255, 255, 255, 0.03);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #00f2fe;
+      --accent-green: #10b981;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      margin: 0;
+      line-height: 1.6;
+    }
+    h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
+    header { text-align: center; margin-bottom: 60px; padding-top: 40px; }
+    header h1 { font-size: 3.5rem; margin-bottom: 10px; background: linear-gradient(90deg, #4facfe, #00f2fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    header p { font-size: 1.2rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 30px; }
+    .btn { display: inline-block; padding: 14px 28px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #0ea5e9, #2563eb); border-radius: 8px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(14,165,233,0.3); }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(14,165,233,0.5); }
+    section { margin-bottom: 80px; }
+    section h2 { font-size: 2.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 30px; color: var(--accent); }
+    .card { background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05); padding: 25px; border-radius: 12px; margin-bottom: 20px; }
+    .img-fluid { max-width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin: 30px 0; }
+    ul, ol { margin-left: 20px; color: var(--text-muted); }
+    li { margin-bottom: 10px; }
+    strong { color: #fff; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Boat & RV Guardian</h1>
+      <p>The ultimate smart local water safety dashboard. Protect your vessel or RV from burst pipes and catastrophic flooding using LinkTap.</p>
+      <a href="app/" class="btn">Launch Live Web Dashboard</a>
+    </header>
+
+    <section>
+      <h2>How and Why It Works</h2>
+      <p>Boats and RVs are extremely susceptible to water damage from burst pipes when connected to "city water" or dock supply. Traditional water timers aren't designed for this. <strong>Boat & RV Guardian</strong> acts as a smart proxy for the <a href="https://www.link-tap.com" target="_blank" style="color: var(--accent);">LinkTap</a> smart valve.</p>
+      <img src="how_it_works.png" alt="How it Works Diagram" class="img-fluid" />
+      <p>By connecting directly over your <strong>Local Wi-Fi Network</strong> to the LinkTap Gateway, the Guardian app sends automated, continuous "heartbeat" signals. If a pipe bursts and water runs longer than your configured safe limit, the valve automatically snaps shut. If your internet goes down, or if the dashboard is closed, the system falls back to safety and shuts off the water.</p>
+    </section>
+
+    <section>
+      <h2>System Components</h2>
+      <img src="system_components.png" alt="System Components" class="img-fluid" />
+      <div class="grid">
+        <div class="card">
+          <h3 style="color: var(--accent-green)">1. LinkTap Valve (TapLinker)</h3>
+          <p>A heavy-duty, motorized brass water valve installed between your hose and your RV/Boat. It shuts off the water supply mechanically.</p>
+        </div>
+        <div class="card">
+          <h3 style="color: var(--accent-green)">2. LinkTap Gateway</h3>
+          <p>The central hub that talks to the valve via Zigbee and connects to your local Wi-Fi router. It handles the API requests from the Guardian app.</p>
+        </div>
+        <div class="card">
+          <h3 style="color: var(--accent-green)">3. Flow Meter (Optional)</h3>
+          <p>Measures exact gallons/liters used. The Guardian app can use this data to shut off the water after a precise volume limit is reached.</p>
+        </div>
+        <div class="card">
+          <h3 style="color: var(--accent-green)">4. Boat & RV Guardian App</h3>
+          <p>This software. A persistent dashboard that overrides the LinkTap's default behavior, keeping the water flowing as long as the app is running and no limits are breached.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Full Setup Directions (Start to Finish)</h2>
+      
+      <div class="card">
+        <h3>Step 1: Unbox & Setup LinkTap</h3>
+        <ol>
+          <li>Follow the official LinkTap instructions to plug in the <strong>Gateway</strong> to power and connect it to your Wi-Fi network.</li>
+          <li>Insert batteries into the <strong>TapLinker (Valve)</strong> and pair it with the Gateway using the official LinkTap mobile app.</li>
+          <li>Ensure you can turn the water on and off using the official LinkTap app.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h3>Step 2: Enable Local API (Crucial for Reliability)</h3>
+        <p>For the fastest response time and internet-free reliability, enable the Local HTTP API:</p>
+        <ol>
+          <li>Open the LinkTap official app. Go to <strong>Gateway Details</strong>.</li>
+          <li>Find the <strong>Local Network API</strong> setting and turn it <strong>ON</strong>.</li>
+          <li>Note down the <strong>Gateway IP Address</strong> (e.g., <code>192.168.1.150</code>).</li>
+          <li>Note down the 16-character <strong>Gateway ID</strong>.</li>
+          <li>Note down the 16-character <strong>TapLinker ID</strong> (Device ID).</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h3>Step 3: Configure the Guardian App</h3>
+        <ol>
+          <li>Open the <a href="app/" style="color: var(--accent);">Guardian Web Dashboard</a> (or install the native Android/macOS app).</li>
+          <li>Click the <strong>Settings ⚙️</strong> icon in the top right.</li>
+          <li>Disable <strong>Mock Mode</strong> (Simulate Locally).</li>
+          <li>Enter the <strong>Gateway IP Address</strong>, <strong>Gateway ID</strong>, and <strong>Device ID</strong> you collected earlier.</li>
+          <li>Close the settings. The dashboard should immediately connect and display your valve's live status!</li>
+        </ol>
+      </div>
+    </section>
+
+    <section>
+      <h2>Dashboard Options Explained</h2>
+      <div class="card">
+        <h3 style="color: var(--accent)">Normal Run Mode</h3>
+        <p>This is the standard mode for continuous protection. Set a <strong>Target Time</strong> (e.g., 20 minutes) and a <strong>Volume Limit</strong> (e.g., 30 Gallons). The Guardian app will tell the valve to stay open. Every few seconds, the app resets the timer. If the app crashes, or Wi-Fi drops, the valve will count down from 20 minutes and automatically shut off. <strong>Auto-Restart (Loop)</strong> automatically restarts the 20-minute countdown when the time runs out, meaning water stays on indefinitely as long as the app is running.</p>
+      </div>
+      <div class="card">
+        <h3 style="color: var(--accent)">Fill a Tank / Custom Run</h3>
+        <p>Need to fill your RV's fresh water tank with exactly 40 gallons? Enter 40 in the volume box and hit <strong>Start Custom Run</strong>. The valve will turn on and automatically shut off the moment 40 gallons have passed through the flow meter.</p>
+      </div>
+      <div class="card">
+        <h3 style="color: var(--accent)">Mock Mode (Simulation)</h3>
+        <p>Don't have the hardware yet? Turn on Mock Mode in settings. The app will simulate a virtual gateway so you can test how the timers, auto-restarts, and usage history features work without real water flowing.</p>
+      </div>
+    </section>
+
+    <footer style="text-align: center; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+      <p>Built for safety. <a href="https://github.com/jgearinger/Boat-RV-Guardian" style="color: var(--accent);">View Source on GitHub</a></p>
+    </footer>
+  </div>
+
+</body>
 </html>
