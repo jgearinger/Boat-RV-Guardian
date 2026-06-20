@@ -844,11 +844,15 @@ export default function App() {
         throw new Error(`HTTP Error: ${response.status} ${errText}`);
       }
       let text = await response.text();
-      let data;
+      let data: any = { result: 'ok' };
       try {
         data = JSON.parse(text);
       } catch (e) {
-        throw new Error(`API returned invalid JSON: ${text.substring(0, 50)}...`);
+        if (text.includes('<title>api</title>')) {
+           addLog('info', 'Gateway returned HTML instead of JSON. Assuming command success.');
+        } else {
+           throw new Error(`API returned invalid JSON: ${text.substring(0, 50)}...`);
+        }
       }
       if (data.result === 'error') throw new Error(`LinkTap API Error: ${data.message}`);
       addLog('success', 'API Start command received by Gateway.');
@@ -925,11 +929,15 @@ export default function App() {
         throw new Error(`HTTP Error: ${response.status} ${errText}`);
       }
       let text = await response.text();
-      let data;
+      let data: any = { result: 'ok' };
       try {
         data = JSON.parse(text);
       } catch (e) {
-        throw new Error(`API returned invalid JSON: ${text.substring(0, 50)}...`);
+        if (text.includes('<title>api</title>')) {
+           addLog('info', 'Gateway returned HTML instead of JSON. Assuming command success.');
+        } else {
+           throw new Error(`API returned invalid JSON: ${text.substring(0, 50)}...`);
+        }
       }
       if (data.result === 'error') throw new Error(`LinkTap API Error: ${data.message}`);
       addLog('success', 'API Stop command received by Gateway.');
