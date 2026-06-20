@@ -135,7 +135,14 @@ export default function App() {
   const [resetTime, setResetTime] = useState(() => localStorage.getItem('lt_reset_time') || '12:00');
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('lt_notifications') === 'true');
-  const [alarmSound, setAlarmSound] = useState<'siren' | 'beep' | 'off'>(() => (localStorage.getItem('lt_alarm_sound') as any) || 'siren');
+  const [alarmSound, setAlarmSound] = useState<'siren' | 'beep' | 'off'>(() => (localStorage.getItem('lt_alarm_sound') as any) || 'beep');
+  const [alarmVolume, setAlarmVolume] = useState(() => Number(localStorage.getItem('lt_alarm_vol') || '1.0'));
+  
+  const [notifyAutoGuard, setNotifyAutoGuard] = useState(() => localStorage.getItem('lt_notif_autoguard') !== 'false');
+  const [notifyFall, setNotifyFall] = useState(() => localStorage.getItem('lt_notif_fall') !== 'false');
+  const [notifyLowBattery, setNotifyLowBattery] = useState(() => localStorage.getItem('lt_notif_battery') === 'true');
+  const [notifyWatering, setNotifyWatering] = useState(() => localStorage.getItem('lt_notif_watering') === 'true');
+  const hasNotifiedBattery = useRef(false);
 
   // --- Real-time API States (matched to G2S Gateway Schema) ---
   const [isRfLinked, setIsRfLinked] = useState(true);
@@ -280,13 +287,19 @@ export default function App() {
     localStorage.setItem('lt_target_vol', targetVolume.toString());
     localStorage.setItem('lt_notifications', notificationsEnabled.toString());
     localStorage.setItem('lt_alarm_sound', alarmSound);
+    localStorage.setItem('lt_alarm_vol', alarmVolume.toString());
+    localStorage.setItem('lt_notif_autoguard', notifyAutoGuard.toString());
+    localStorage.setItem('lt_notif_fall', notifyFall.toString());
+    localStorage.setItem('lt_notif_battery', notifyLowBattery.toString());
+    localStorage.setItem('lt_notif_watering', notifyWatering.toString());
   }, [
     gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, 
     maxFlowRate, maxDuration, unitSystem, timeZone, resetTime, enableHistory,
     apiMode, cloudUsername, cloudApiKey, alertOffline,
     inputDuration, inputVolume, delayedStartMins, delayedStartSecs, washDownDuration,
     normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
-    targetDuration, targetVolume, isPollingActive, notificationsEnabled, alarmSound
+    targetDuration, targetVolume, isPollingActive, notificationsEnabled, alarmSound,
+    alarmVolume, notifyAutoGuard, notifyFall, notifyLowBattery, notifyWatering
   ]);
 
   useEffect(() => {
@@ -316,19 +329,19 @@ export default function App() {
         osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 1.5);
         osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 2.0);
         
-        gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2.0);
+        gainNode.gain.setValueAtTime(0.5 * alarmVolume, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01 * alarmVolume, ctx.currentTime + 2.0);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 2.0);
       } else if (alarmSound === 'beep') {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(1000, ctx.currentTime);
-        gainNode.gain.setValueAtTime(1, ctx.currentTime);
+        gainNode.gain.setValueAtTime(1.0 * alarmVolume, ctx.currentTime);
         gainNode.gain.setValueAtTime(0, ctx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(1, ctx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(1.0 * alarmVolume, ctx.currentTime + 0.2);
         gainNode.gain.setValueAtTime(0, ctx.currentTime + 0.3);
-        gainNode.gain.setValueAtTime(1, ctx.currentTime + 0.4);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        gainNode.gain.setValueAtTime(1.0 * alarmVolume, ctx.currentTime + 0.4);
+        gainNode.gain.exponentialRampToValueAtTime(0.01 * alarmVolume, ctx.currentTime + 0.5);
         
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.5);
@@ -338,9 +351,9 @@ export default function App() {
     }
   };
 
-  const triggerAlert = async (title: string, message: string) => {
-    playSynthesizedAlarm();
-    addLog('danger', `${title}: ${message}`);
+  const triggerAlert = async (title: string, message: string, silent: boolean = false) => {
+    if (!silent) playSynthesizedAlarm();
+    addLog(silent ? 'info' : 'danger', `${title}: ${message}`);
     
     if (!notificationsEnabled) return;
     
@@ -433,23 +446,45 @@ export default function App() {
       }
       
       if (triggered && isWatering) {
-        triggerAlert('Safety Sentry Triggered', `${cause} Shutting down valve...`);
+        if (notifyAutoGuard) triggerAlert('Safety Sentry Triggered', `${cause} Shutting down valve...`);
         executeStopCommand('limit');
       }
     }
   }, [speed, isBroken, isLeak, isWatering, autoGuardEnabled, maxFlowRate, displaySpeed, speedUnit]);
 
   useEffect(() => {
-    if (isFall && autoGuardEnabled) {
+    if (isFall && autoGuardEnabled && notifyFall) {
       triggerAlert('Fall/Theft Detected', 'The device has reported a fall or physical anomaly!');
     }
-  }, [isFall, autoGuardEnabled]);
+  }, [isFall, autoGuardEnabled, notifyFall]);
 
   useEffect(() => {
     if (alertOffline && !isRfLinked && autoGuardEnabled) {
       triggerAlert('Device Offline', 'The LinkTap gateway is offline or disconnected.');
     }
   }, [alertOffline, isRfLinked, autoGuardEnabled]);
+
+  // Low battery trigger
+  useEffect(() => {
+    if (notifyLowBattery && battery > 0 && battery <= 20) {
+      if (!hasNotifiedBattery.current) {
+        triggerAlert('Low Battery', `Gateway battery is low (${battery}%).`, true);
+        hasNotifiedBattery.current = true;
+      }
+    } else if (battery > 20) {
+      hasNotifiedBattery.current = false;
+    }
+  }, [battery, notifyLowBattery]);
+
+  // Water start/stop trigger
+  const previousWatering = useRef(isWatering);
+  useEffect(() => {
+    if (notifyWatering && isWatering !== previousWatering.current) {
+      if (isWatering) triggerAlert('Water Valve Opened', 'Water flow has started.', true);
+      else triggerAlert('Water Valve Closed', 'Water flow has stopped.', true);
+    }
+    previousWatering.current = isWatering;
+  }, [isWatering, notifyWatering]);
 
   const commandersRef = useRef({ start: null as any });
   const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory });
@@ -1426,10 +1461,6 @@ export default function App() {
                   </div>
                 </div>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Automatically shuts down the local water connection (cmd: 7) if values exceed thresholds or physical anomalies occur.</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                  <input type="checkbox" checked={alertOffline} onChange={(e) => setAlertOffline(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-orange)' }} />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Alert me if device goes offline</span>
-                </div>
               </div>
 
               <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
@@ -1442,17 +1473,47 @@ export default function App() {
                     <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
                   </div>
                 </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={notifyAutoGuard} onChange={(e) => setNotifyAutoGuard(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Auto-Guard Triggers</span>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={notifyFall} onChange={(e) => setNotifyFall(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Fall/Theft Alerts</span>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={alertOffline} onChange={(e) => setAlertOffline(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-orange)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Device Offline</span>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={notifyLowBattery} onChange={(e) => setNotifyLowBattery(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-orange)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Low Battery (&lt;20%)</span>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={notifyWatering} onChange={(e) => setNotifyWatering(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--text-secondary)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Water Start/Stop</span>
+                   </div>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label className="form-label">Warning Alarm Sound</label>
-                    <select className="form-input" value={alarmSound} onChange={(e) => setAlarmSound(e.target.value as any)}>
-                      <option value="siren">🚨 Siren (Loud)</option>
-                      <option value="beep">⚠️ Beep (Standard)</option>
-                      <option value="off">🔇 Silent</option>
-                    </select>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <label className="form-label">Warning Alarm Sound</label>
+                      <select className="form-input" value={alarmSound} onChange={(e) => setAlarmSound(e.target.value as any)}>
+                        <option value="siren">🚨 Siren (Loud)</option>
+                        <option value="beep">⚠️ Beep (Standard)</option>
+                        <option value="off">🔇 Silent</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Alarm Volume</span><span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{Math.round(alarmVolume * 100)}%</span></div>
+                      <input type="range" min="0.1" max="1.0" step="0.1" className="form-input" style={{ padding: 0 }} value={alarmVolume} onChange={(e) => setAlarmVolume(Number(e.target.value))} />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <button onClick={() => triggerAlert('Test Alert', 'This is a test of the Boat & RV Guardian alert system.')} className="btn-secondary" style={{ width: '100%', padding: '12px' }}>Test Alert System</button>
+                    <button onClick={() => triggerAlert('Test Alert', 'This is a test of the Boat & RV Guardian alert system.')} className="btn-secondary" style={{ width: '100%', height: '100%', minHeight: '60px', padding: '12px' }}>Test Alert System</button>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
