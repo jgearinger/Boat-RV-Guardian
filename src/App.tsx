@@ -1550,14 +1550,14 @@ export default function App() {
                 <div>
                   <label className="form-label">API Connection Mode</label>
                   <select className="form-input" value={apiMode} onChange={(e) => { setApiMode(e.target.value as 'local' | 'cloud'); setIsPollingActive(false); }} disabled={mockMode}>
-                    <option value="local" disabled={!canUseRealConnection}>Local HTTP API (Faster, Requires local network)</option>
+                    <option value="local">Local HTTP API (Faster, Requires local network)</option>
                     <option value="cloud">Cloud API (Works anywhere, requires internet)</option>
                   </select>
                 </div>
 
-                {!canUseRealConnection && apiMode === 'local' && (
-                  <div style={{ color: '#ff6b6b', fontSize: '0.85rem', marginTop: '4px' }}>
-                    ❌ <strong>Local API is disabled on the Web Version.</strong> Modern browsers (CORS) physically block internet websites from connecting to local IPs like 192.168.x.x. To use the Local API, you must download the native app. Please switch to the Cloud API above.
+                {!isNativeApp && apiMode === 'local' && !mockMode && (
+                  <div style={{ color: '#ffcc00', fontSize: '0.85rem', marginTop: '4px' }}>
+                    ⚠️ <strong>Using Local API in the browser?</strong> Modern browsers (CORS) block direct local connections. To avoid CORS errors, please install a Chrome extension like <a href="https://chromewebstore.google.com/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>"Allow CORS"</a> and enable it, or use our Native App instead!
                   </div>
                 )}
 
@@ -1659,9 +1659,8 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: mockMode ? 1 : 0.6 }}>
                   <label className="form-label" style={{ margin: 0 }}>
                     Simulate Locally (Mock Mode)
-                    {!canUseRealConnection && <span style={{ color: 'var(--accent-red)', fontSize: '0.75rem', display: 'block' }}><br/>Hardware Disabled in Web Demo</span>}
                   </label>
-                  <input type="checkbox" disabled={!canUseRealConnection} checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: !canUseRealConnection ? 'not-allowed' : 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                  <input type="checkbox" checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
                 </div>
 
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
