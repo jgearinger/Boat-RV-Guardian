@@ -1142,7 +1142,7 @@ export default function App() {
 
           {/* Alarm Banner if leak/burst is active */}
           {(isBroken || isLeak || isFall || displaySpeed > maxFlowRate) && (
-            <div className="glass-card danger" style={{ animation: 'pulse-red 1.5s infinite', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="glass-card danger" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '32px',
