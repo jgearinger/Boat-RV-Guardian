@@ -4,8 +4,8 @@
   "version": "1.0.22",
   "identifier": "com.jgearinger.boatrvguardian",
   "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist/app",
+    "devUrl": "http://localhost:5173/app/",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },

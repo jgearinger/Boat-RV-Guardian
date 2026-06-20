@@ -11,10 +11,11 @@ Get the native app for the best experience (required for Local API support). All
 [![Download macOS DMG](https://img.shields.io/badge/Download-macOS_DMG-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest)
 [![Download Windows EXE](https://img.shields.io/badge/Download-Windows_EXE-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest)
 
-## 🚀 Live Demo
-You can try the web dashboard right now in your browser (Simulator mode enabled):
-👉 **[Launch Live Demo](https://jgearinger.github.io/Boat-RV-Guardian/)**
+## 🌐 Website & Live Demo
+Read the full setup guide, see how the system works, and launch the live web dashboard (Simulator mode enabled) directly from our website:
 
+👉 **[View Documentation Website](https://jgearinger.github.io/Boat-RV-Guardian/)**
+👉 **[Launch Live Web Dashboard](https://jgearinger.github.io/Boat-RV-Guardian/app/)**
 ## Features
 
 *   **Flooding Auto-Guard Sentry**: Runs locally in your browser. Constantly monitors water flow rate and pipe integrity. If the flow speed exceeds your safety limit (e.g. from a burst pipe inside the boat), it immediately shuts off the main valve.

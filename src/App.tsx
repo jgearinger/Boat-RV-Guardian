@@ -597,6 +597,7 @@ export default function App() {
             gw_id: gatewayId,
             dev_id: deviceId,
             duration: Math.round(durationMins * 60), // Local API expects SECONDS
+            vol: Math.round(volumeLimitLiters)
           }),
         });
       }
@@ -1032,17 +1033,11 @@ export default function App() {
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                 <button 
                   className="btn-secondary" 
-                  onClick={() => setDurationOffset(targetDuration > 0 ? targetDuration - remainDuration : 0)}
+                  onClick={() => executeStartCommand(targetDuration / 60, targetVolume)}
+                  disabled={!!isCommandLoading}
                   style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
                 >
-                  ⏱️ Reset Time
-                </button>
-                <button 
-                  className="btn-secondary" 
-                  onClick={() => setVolumeOffset(volume)}
-                  style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
-                >
-                  💧 Reset Volume
+                  ⏱️ Reset Timer & Volume
                 </button>
               </div>
             </div>
@@ -1255,7 +1250,15 @@ export default function App() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                  <input type="checkbox" checked={autoRestartNormal} onChange={(e) => setAutoRestartNormal(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                  <input type="checkbox" checked={autoRestartNormal} onChange={(e) => {
+                    const checked = e.target.checked;
+                    setAutoRestartNormal(checked);
+                    if (checked && isWatering) {
+                       let vol = normalRunVolume;
+                       if (unitSystem === 'imperial') vol = vol / 0.264172;
+                       executeStartCommand((normalRunHours * 60) + normalRunMinutes, vol);
+                    }
+                  }} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Auto-restart profile automatically when time expires</span>
                 </div>
               </div>
@@ -1534,6 +1537,9 @@ export default function App() {
               
               <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '4px' }}>📊 Usage Statistics</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Water volume consumed ({volUnit}).</p>
+              <div style={{ padding: '10px', background: 'rgba(255,200,0,0.1)', borderLeft: '3px solid #fde68a', borderRadius: '4px', fontSize: '0.75rem', color: '#fde68a' }}>
+                <strong>Note:</strong> This is only historical data recorded <em>while the app is open and connected</em>. It is stored locally on your device and not synced to the cloud.
+              </div>
               
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
                  {(['hourly','daily','weekly','monthly'] as const).map(tab => (
