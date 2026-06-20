@@ -1,0 +1,1 @@
+{"name":"Boat & RV Guardian","short_name":"Guardian","description":"A smart dashboard for using LinkTap as a burst pipe auto-shutoff system.","start_url":"./","display":"standalone","background_color":"#0a0f1d","theme_color":"#0d1527","lang":"en","scope":"./","icons":[{"src":"app_icon.jpg","sizes":"1024x1024","type":"image/jpeg","purpose":"any maskable"}]}
