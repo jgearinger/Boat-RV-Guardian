@@ -238,6 +238,7 @@ export default function App() {
   const previousVolumeRef = useRef<number>(0);
   const washDownTransitionTimeRef = useRef<number | null>(null);
   const lastPollTimeRef = useRef<number>(0);
+  const manualStopTriggeredRef = useRef<boolean>(false);
 
   const [volumeOffset, setVolumeOffset] = useState(0);
   const [durationOffset, setDurationOffset] = useState(0);
@@ -695,12 +696,18 @@ export default function App() {
         }
         
         if (stateRef.current.isWatering && !newIsWatering && stateRef.current.autoRestartNormal) {
-          addLog('info', 'Valve closed. Auto-restart is ON. Restarting Normal Run profile in 5 seconds...');
-          setTimeout(() => {
-             let vol = stateRef.current.normalRunVolume;
-             if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
-             if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
-          }, 5000);
+          const naturalExpiration = stateRef.current.remainDuration <= (effectiveInterval + 15);
+          if (manualStopTriggeredRef.current || !naturalExpiration) {
+            addLog('info', 'Valve closed manually before timer expired. Auto-restart skipped.');
+            manualStopTriggeredRef.current = false;
+          } else {
+            addLog('info', 'Timer expired. Auto-restart is ON. Restarting Normal Run profile in 5 seconds...');
+            setTimeout(() => {
+               let vol = stateRef.current.normalRunVolume;
+               if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
+               if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
+            }, 5000);
+          }
         }
         
         if (stateRef.current.isWatering && !newIsWatering) {
