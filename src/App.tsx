@@ -106,8 +106,15 @@ export default function App() {
     return (gw && gw !== 'GW_02_MOCK') || (dev && dev !== 'TAP_MOCK_1') || !!cloud;
   };
 
-  const [isPollingActive, setIsPollingActive] = useState(() => {
-    const stored = localStorage.getItem('lt_is_polling');
+  const [isCloudPollingActive, setIsCloudPollingActive] = useState(() => {
+    const stored = localStorage.getItem('lt_is_cloud_polling');
+    if (stored === 'true') return true;
+    if (hasCustomSettings()) return true;
+    return false;
+  });
+
+  const [isLocalPollingActive, setIsLocalPollingActive] = useState(() => {
+    const stored = localStorage.getItem('lt_is_local_polling');
     if (stored === 'true') return true;
     if (hasCustomSettings()) return true;
     return false;
@@ -265,7 +272,8 @@ export default function App() {
     localStorage.setItem('lt_device_id', deviceId);
     localStorage.setItem('lt_refresh', refreshInterval.toString());
     localStorage.setItem('lt_mock', mockMode.toString());
-    localStorage.setItem('lt_is_polling', isPollingActive.toString());
+    localStorage.setItem('lt_is_cloud_polling', isCloudPollingActive.toString());
+    localStorage.setItem('lt_is_local_polling', isLocalPollingActive.toString());
     localStorage.setItem('lt_autoguard', autoGuardEnabled.toString());
     localStorage.setItem('lt_maxflow', maxFlowRate.toString());
     localStorage.setItem('lt_maxdur', maxDuration.toString());
@@ -308,7 +316,7 @@ export default function App() {
     maxDuration, maxFlowRate, cloudUsername, cloudApiKey,
     inputDuration, inputVolume, delayedStartMins, delayedStartSecs, washDownDuration,
     normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
-    targetDuration, targetVolume, isPollingActive, notificationsEnabled, alarmSound,
+    targetDuration, targetVolume, isCloudPollingActive, isLocalPollingActive, notificationsEnabled, alarmSound,
     alarmVolume, alarmRepeatInterval, notifyAutoGuard, notifyFall, notifyLowBattery, notifyWatering
   ]);
 
@@ -520,7 +528,7 @@ export default function App() {
     setConnectionStatus(mockMode ? 'mock' : 'disconnected');
     
     const poll = async () => {
-      if (!isPollingActive && !mockMode) {
+      if (!isLocalPollingActive && !isCloudPollingActive && !mockMode) {
         setConnectionStatus('disconnected');
         return;
       }
@@ -573,7 +581,7 @@ export default function App() {
         let usedCloud = false;
 
         // 1. Try Local API first (for extremely fast, real-time telemetry)
-        if (gatewayIp) {
+        if (isLocalPollingActive && gatewayIp) {
            try {
              const localRes = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
                method: 'POST',
@@ -599,7 +607,7 @@ export default function App() {
         }
 
         // 2. Fallback to Cloud API (If local fails, e.g., device not on same network)
-        if (!data && cloudUsername && cloudApiKey) {
+        if (!data && isCloudPollingActive && cloudUsername && cloudApiKey) {
            usedCloud = true;
            const cloudRes = await unifiedFetch('https://www.link-tap.com/api/getWateringStatus', {
              method: 'POST',
@@ -804,7 +812,7 @@ export default function App() {
     
     const timer = setInterval(poll, effectiveInterval * 1000);
     return () => clearInterval(timer);
-  }, [apiMode, gatewayIp, gatewayId, deviceId, isPollingActive, refreshInterval, effectiveInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
+  }, [gatewayIp, gatewayId, deviceId, isCloudPollingActive, isLocalPollingActive, refreshInterval, effectiveInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
 
   // --- API Action Commanders ---
   
@@ -1778,95 +1786,119 @@ export default function App() {
 
                 {!mockMode && (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                      <div><label className="form-label">Gateway Local IP Address</label><input type="text" className="form-input" value={gatewayIp} onChange={(e) => { setGatewayIp(e.target.value); setIsPollingActive(false); }} placeholder="e.g. 192.168.1.100" /></div>
-                      <div><label className="form-label">Cloud Username</label><input type="text" className="form-input" value={cloudUsername} onChange={(e) => { setCloudUsername(e.target.value); setIsPollingActive(false); }} placeholder="App Username" /></div>
+                    {/* Cloud Controller Configuration */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>☁️ Cloud Controller Configuration</h4>
+                      <div><label className="form-label">Cloud Username</label><input type="text" className="form-input" value={cloudUsername} onChange={(e) => { setCloudUsername(e.target.value); setIsCloudPollingActive(false); }} placeholder="App Username" /></div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <label className="form-label" style={{ marginBottom: 0 }}>Cloud API Key</label>
-                        <input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsPollingActive(false); }} placeholder="Paste API Key" />
+                        <input type="password" className="form-input" value={cloudApiKey} onChange={(e) => { setCloudApiKey(e.target.value); setIsCloudPollingActive(false); }} placeholder="Paste API Key" />
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                          ℹ️ <strong>How to get your API Key:</strong> LinkTap does not allow retrieving the API key via the mobile app anymore. You must log into the <a href="https://www.link-tap.com/#!/api-for-developers" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>LinkTap Web Portal</a> on a computer, go to <strong>Settings</strong>, and generate your API Key there.
+                          ℹ️ <strong>How to get your API Key:</strong> Log into the <a href="https://www.link-tap.com/#!/api-for-developers" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>LinkTap Web Portal</a> on a computer, go to <strong>Settings</strong>, and generate your API Key.
                         </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', marginTop: '4px' }}>
+                        <button 
+                          className={isCloudPollingActive ? "btn-secondary" : "btn-primary"}
+                          onClick={() => setIsCloudPollingActive(!isCloudPollingActive)}
+                          style={{ padding: '10px', fontWeight: 700, opacity: isCloudPollingActive ? 0.7 : 1 }}
+                        >
+                          {isCloudPollingActive ? '✓ Cloud Active (Click to Disconnect)' : 'Connect Cloud'}
+                        </button>
+                        <button className="btn-secondary" onClick={() => setManualRefresh(Date.now())} style={{ padding: '10px' }}>↻ Refresh</button>
+                      </div>
+                    </div>
+
+                    {/* Local Controller Configuration */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-emerald)' }}>🏠 Local Controller Configuration</h4>
+                      <div><label className="form-label">Gateway Local IP Address</label><input type="text" className="form-input" value={gatewayIp} onChange={(e) => { setGatewayIp(e.target.value); setIsLocalPollingActive(false); }} placeholder="e.g. 192.168.1.100" /></div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', marginTop: '4px' }}>
+                        <button 
+                          className={isLocalPollingActive ? "btn-secondary" : "btn-primary"}
+                          onClick={() => setIsLocalPollingActive(!isLocalPollingActive)}
+                          style={{ padding: '10px', fontWeight: 700, opacity: isLocalPollingActive ? 0.7 : 1, background: isLocalPollingActive ? '' : 'var(--accent-emerald)' }}
+                        >
+                          {isLocalPollingActive ? '✓ Local Active (Click to Disconnect)' : 'Connect Local'}
+                        </button>
+                        <button className="btn-secondary" onClick={() => setManualRefresh(Date.now())} style={{ padding: '10px' }}>↻ Refresh</button>
                       </div>
                     </div>
                   </>
                 )}
-                
-                {discoveredDevices.length > 0 ? (
-                  <>
-                    <div>
-                      <label className="form-label">Gateway ID</label>
-                      <select className="form-input" disabled={mockMode} value={gatewayId} onChange={(e) => { setGatewayId(e.target.value); setIsPollingActive(false); }}>
-                        <option value="">-- Select Gateway --</option>
-                        {discoveredDevices.map((gw: any) => (
-                           <option key={gw.gatewayId} value={gw.gatewayId}>{gw.name} ({gw.gatewayId})</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="form-label">TapLinker Device ID</label>
-                      <select className="form-input" disabled={mockMode} value={deviceId} onChange={(e) => { setDeviceId(e.target.value); setIsPollingActive(false); }}>
-                        <option value="">-- Select TapLinker --</option>
-                        {(discoveredDevices.find((gw: any) => gw.gatewayId === gatewayId)?.taplinker || []).map((tl: any) => (
-                           <option key={tl.taplinkerId} value={tl.taplinkerId}>{tl.taplinkerName} ({tl.taplinkerId})</option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="form-label">Gateway ID</label>
-                      <input 
-                        type="text" 
-                        disabled={mockMode} 
-                        className="form-input" 
-                        placeholder="e.g. 1485A036004B1200"
-                        maxLength={16}
-                        value={gatewayId} 
-                        onChange={(e) => { 
-                          setGatewayId(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16)); 
-                          setIsPollingActive(false); 
-                        }} 
-                      />
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Must be exactly 16 uppercase hex characters (0-9, A-F). No dashes.</div>
-                    </div>
-                    <div style={{ marginTop: '12px' }}>
-                      <label className="form-label">TapLinker Device ID</label>
-                      <input 
-                        type="text" 
-                        disabled={mockMode} 
-                        className="form-input" 
-                        placeholder="e.g. 6422F036004B1200"
-                        maxLength={16}
-                        value={deviceId} 
-                        onChange={(e) => { 
-                          setDeviceId(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16)); 
-                          setIsPollingActive(false); 
-                        }} 
-                      />
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Must be exactly 16 uppercase hex characters. No dashes.</div>
-                    </div>
-                  </>
-                )}
 
-                <div style={{ marginTop: '4px' }}>
-                   <button className="btn-secondary" disabled={isDiscovering || !cloudUsername || !cloudApiKey} onClick={handleDiscover} style={{ width: '100%', padding: '10px' }}>
-                     {isDiscovering ? 'Discovering...' : '📡 Auto-Discover Devices from Cloud'}
-                   </button>
-                   {(!cloudUsername || !cloudApiKey) && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'center' }}>Enter Cloud Username & API Key above to enable auto-discovery.</div>}
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '8px 0' }}></div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700 }}>Hardware Identifiers</h4>
+                  <div style={{ marginBottom: '4px' }}>
+                     <button className="btn-secondary" disabled={isDiscovering || !cloudUsername || !cloudApiKey || mockMode} onClick={handleDiscover} style={{ width: '100%', padding: '10px' }}>
+                       {isDiscovering ? 'Discovering...' : '📡 Auto-Discover Devices from Cloud'}
+                     </button>
+                     {(!cloudUsername || !cloudApiKey) && !mockMode && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'center' }}>Enter Cloud Username & API Key above to enable auto-discovery.</div>}
+                  </div>
+
+                  {discoveredDevices.length > 0 ? (
+                    <>
+                      <div>
+                        <label className="form-label">Gateway ID</label>
+                        <select className="form-input" disabled={mockMode} value={gatewayId} onChange={(e) => { setGatewayId(e.target.value); setIsLocalPollingActive(false); setIsCloudPollingActive(false); }}>
+                          <option value="">-- Select Gateway --</option>
+                          {discoveredDevices.map((gw: any) => (
+                             <option key={gw.gatewayId} value={gw.gatewayId}>{gw.name} ({gw.gatewayId})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">TapLinker Device ID</label>
+                        <select className="form-input" disabled={mockMode} value={deviceId} onChange={(e) => { setDeviceId(e.target.value); setIsLocalPollingActive(false); setIsCloudPollingActive(false); }}>
+                          <option value="">-- Select TapLinker --</option>
+                          {(discoveredDevices.find((gw: any) => gw.gatewayId === gatewayId)?.taplinker || []).map((tl: any) => (
+                             <option key={tl.taplinkerId} value={tl.taplinkerId}>{tl.taplinkerName} ({tl.taplinkerId})</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="form-label">Gateway ID</label>
+                        <input 
+                          type="text" 
+                          disabled={mockMode} 
+                          className="form-input" 
+                          placeholder="e.g. 1485A036004B1200"
+                          maxLength={16}
+                          value={gatewayId} 
+                          onChange={(e) => { 
+                            setGatewayId(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16)); 
+                            setIsLocalPollingActive(false); setIsCloudPollingActive(false);
+                          }} 
+                        />
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Must be exactly 16 uppercase hex characters (0-9, A-F). No dashes.</div>
+                      </div>
+                      <div>
+                        <label className="form-label">TapLinker Device ID</label>
+                        <input 
+                          type="text" 
+                          disabled={mockMode} 
+                          className="form-input" 
+                          placeholder="e.g. 6422F036004B1200"
+                          maxLength={16}
+                          value={deviceId} 
+                          onChange={(e) => { 
+                            setDeviceId(e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0, 16)); 
+                            setIsLocalPollingActive(false); setIsCloudPollingActive(false);
+                          }} 
+                        />
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Must be exactly 16 uppercase hex characters. No dashes.</div>
+                      </div>
+                    </>
+                  )}
                 </div>
                 
-                <div><label className="form-label">Local Polling Rate: {effectiveInterval}s</label><input type="range" min="2" max="30" className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
-
-                <button 
-                  className="btn-primary" 
-                  disabled={mockMode || isPollingActive}
-                  onClick={() => setIsPollingActive(true)}
-                  style={{ marginTop: '8px', padding: '12px', fontSize: '1.05rem', fontWeight: 700 }}
-                >
-                  {isPollingActive ? '✓ Connected (Live Polling Active)' : '▶ Apply & Connect'}
-                </button>
+                <div style={{ marginTop: '8px' }}><label className="form-label">Local Polling Rate: {effectiveInterval}s</label><input type="range" min="2" max="30" className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
 
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
                 
