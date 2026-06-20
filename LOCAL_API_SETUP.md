@@ -14,8 +14,9 @@ Here is exactly how to configure Google Chrome or Microsoft Edge to allow the co
 **Note:** The LinkTap API does not support initial hardware pairing. You *must* use the official LinkTap app for this first step.
 
 1. Follow the official LinkTap instructions to connect your Gateway to your home Wi-Fi network.
-2. Insert batteries into the LinkTap G2S Valve and pair it with the Gateway using the official LinkTap mobile app.
-3. Verify that you can manually turn the water on and off using the official LinkTap app before proceeding.
+2. **Crucial:** Register/pair the Gateway to your account using the official LinkTap app.
+3. Insert batteries into the LinkTap G2S Valve and pair it with the Gateway using the official LinkTap mobile app.
+4. Verify that you can manually turn the water on and off using the official LinkTap app before proceeding.
 
 ## Step 2: Install & Enable a CORS Extension
 
