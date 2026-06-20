@@ -12,7 +12,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
 const APP_VERSION = '1.0.22';
 
 const unifiedFetch = async (url: string, options?: any) => {
-  if (isTauriEnv() && options?.method === 'POST') {
+  if (isTauriEnv() && options?.method === 'POST' && !url.startsWith('https://')) {
     // Extract IP from URL (e.g. http://192.168.1.100/api.shtml)
     const ip = url.replace('http://', '').split('/')[0];
     const rawText: string = await invokeTauri('raw_linktap_post', { 
