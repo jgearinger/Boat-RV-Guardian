@@ -485,7 +485,7 @@ export default function App() {
 
   useEffect(() => {
     if (isFall && autoGuardEnabled && notifyFall) {
-      triggerAlert('Fall/Theft Detected', 'The device has reported a fall or physical anomaly!');
+      triggerAlert('Tamper/Fall Detected', 'The device has reported a physical tamper or fall anomaly!');
     }
   }, [isFall, autoGuardEnabled, notifyFall]);
 
@@ -1290,7 +1290,7 @@ export default function App() {
                     {isBroken && '🚨 PIPE BREAK ALARM: Critical rupture flagged by flow sensor.'}
                     {!isBroken && displaySpeed > maxFlowRate && `🚨 EXPENDITURE LIMIT: Flow rate (${displaySpeed.toFixed(1)} ${speedUnit}) exceeds local safety threshold (${maxFlowRate} ${speedUnit}).`}
                     {isLeak && !isBroken && '⚠️ LEAK ALERT: Small trickle flow detected without schedule.'}
-                    {isFall && '⚠️ HARDWARE ALARM: TapLinker physical fall or impact detected.'}
+                    {isFall && '⚠️ HARDWARE ALARM: TapLinker physical tamper, fall, or impact detected.'}
                   </p>
                 </div>
               </div>
@@ -1721,7 +1721,7 @@ export default function App() {
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                      <input type="checkbox" checked={notifyFall} onChange={(e) => setNotifyFall(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
-                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Fall/Theft Alerts</span>
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Tamper/Fall Alerts</span>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                      <input type="checkbox" checked={alertOffline} onChange={(e) => setAlertOffline(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-orange)' }} />
