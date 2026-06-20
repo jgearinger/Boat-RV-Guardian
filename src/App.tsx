@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.16';
+const APP_VERSION = '1.0.17';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST') {
@@ -99,7 +99,7 @@ export default function App() {
   const [gatewayIp, setGatewayIp] = useState(() => localStorage.getItem('lt_gateway_ip') || '192.168.1.100');
   const [gatewayId, setGatewayId] = useState(() => localStorage.getItem('lt_gateway_id') || 'GW_02_MOCK');
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || 'TAP_MOCK_1');
-  const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '15'));
+  const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '5'));
   const hasCustomSettings = () => {
     const gw = localStorage.getItem('lt_gateway_id');
     const dev = localStorage.getItem('lt_device_id');
@@ -212,6 +212,9 @@ export default function App() {
   const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [isCommandLoading, setIsCommandLoading] = useState(false);
+  const lastCommandTimeRef = useRef<number>(0);
+  const expectedWateringStateRef = useRef<boolean | null>(null);
+  const commandTimeoutRef = useRef<any>(null);
 
   // --- Display Computed Values ---
   const displaySpeed = unitSystem === 'imperial' ? speed * 0.264172 : speed;
@@ -427,8 +430,29 @@ export default function App() {
            }
         }
         
-        // Update states
         const newIsWatering = data.is_watering ?? false;
+
+        if (expectedWateringStateRef.current !== null) {
+          if (newIsWatering === expectedWateringStateRef.current) {
+            // Physical valve has successfully reached the target state!
+            expectedWateringStateRef.current = null;
+            setIsCommandLoading(false);
+            if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
+          } else {
+            const lockDuration = Math.max(30000, refreshInterval * 1000 + 5000);
+            if (Date.now() - lastCommandTimeRef.current < lockDuration) {
+              // Still waiting for valve to move. Ignore this old state so UI doesn't flicker!
+              setIsRfLinked(data.is_rf_linked ?? true);
+              setSignal(data.signal ?? 0);
+              setBattery(data.battery ?? 0);
+              return;
+            } else {
+              // Timeout expired, give up and accept current state
+              expectedWateringStateRef.current = null;
+              setIsCommandLoading(false);
+            }
+          }
+        }
         
         // Auto-restart logic check
         if (stateRef.current.isWatering && !newIsWatering && stateRef.current.autoRestartNormal) {
@@ -482,6 +506,8 @@ export default function App() {
     if (mockMode) setVolume(0);
 
     // Optimistically update UI so buttons react immediately
+    lastCommandTimeRef.current = Date.now();
+    expectedWateringStateRef.current = true;
     setIsWatering(true);
     setRemainDuration(durationMins * 60);
     if (!mockMode) setSpeed(0);
@@ -497,6 +523,7 @@ export default function App() {
       return;
     }
 
+    if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
     setIsCommandLoading(true);
     try {
       setErrorMsg(null);
@@ -530,13 +557,22 @@ export default function App() {
 
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       addLog('success', 'API Start command received by Gateway.');
-      setTimeout(() => setManualRefresh(Date.now()), 2500); // Poll status shortly after to sync
+      
+      const lockDuration = Math.max(30000, refreshInterval * 1000 + 5000);
+      commandTimeoutRef.current = setTimeout(() => {
+         if (expectedWateringStateRef.current !== null) {
+             expectedWateringStateRef.current = null;
+             setIsCommandLoading(false);
+         }
+      }, lockDuration);
+      
+      setTimeout(() => setManualRefresh(Date.now()), 2500); // Speed up next poll to detect change faster
     } catch (err: any) {
       addLog('danger', `API Start command failed: ${err.message}`);
       setErrorMsg(err.message);
-      setIsWatering(false); // Revert optimistic update
-    } finally {
+      expectedWateringStateRef.current = null;
       setIsCommandLoading(false);
+      setIsWatering(false); // Revert optimistic update
     }
   };
 
@@ -554,9 +590,13 @@ export default function App() {
       return;
     }
 
-    setIsCommandLoading(true);
+    lastCommandTimeRef.current = Date.now();
+    expectedWateringStateRef.current = false;
     setIsWatering(false); // Optimistically update UI
     setSpeed(0);
+    
+    if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
+    setIsCommandLoading(true);
     try {
       setErrorMsg(null);
       let response;
@@ -588,13 +628,22 @@ export default function App() {
 
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       addLog('success', 'API Stop command received by Gateway.');
-      setTimeout(() => setManualRefresh(Date.now()), 2500); // Poll status shortly after to sync
+      
+      const lockDuration = Math.max(30000, refreshInterval * 1000 + 5000);
+      commandTimeoutRef.current = setTimeout(() => {
+         if (expectedWateringStateRef.current !== null) {
+             expectedWateringStateRef.current = null;
+             setIsCommandLoading(false);
+         }
+      }, lockDuration);
+      
+      setTimeout(() => setManualRefresh(Date.now()), 2500); // Speed up next poll to detect change faster
     } catch (err: any) {
       addLog('danger', `API Stop command failed: ${err.message}`);
       setErrorMsg(err.message);
-      setIsWatering(true); // Revert optimistic update
-    } finally {
+      expectedWateringStateRef.current = null;
       setIsCommandLoading(false);
+      setIsWatering(true); // Revert optimistic update
     }
   };
 
@@ -1058,7 +1107,7 @@ export default function App() {
                 className="btn-danger-glow"
                 style={{ width: '100%', padding: '16px 20px', fontSize: '1.1rem' }}
               >
-                🛑 {isCommandLoading ? 'STOPPING...' : 'Instant Valve Close (OFF)'}
+                🛑 {isCommandLoading ? 'STOPPING...' : 'Instant Valve Close (STOP)'}
               </button>
             </div>
           </div>

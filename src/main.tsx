@@ -25,7 +25,12 @@ class ErrorBoundary extends Component<{children: any}, {error: Error | null}> {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
+let root = (window as any)._reactRoot;
+if (!root) {
+  root = createRoot(document.getElementById('root')!);
+  (window as any)._reactRoot = root;
+}
+root.render(
   <StrictMode>
     <ErrorBoundary>
       <App />
