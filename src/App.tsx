@@ -98,7 +98,8 @@ export default function App() {
   const [gatewayId, setGatewayId] = useState(() => localStorage.getItem('lt_gateway_id') || 'GW_02_MOCK');
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || 'TAP_MOCK_1');
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '5'));
-  const effectiveInterval = apiMode === 'cloud' ? Math.max(15, refreshInterval) : refreshInterval;
+  // Minimum interval of 31 seconds for cloud API to respect rate limits
+  const effectiveInterval = apiMode === 'cloud' ? Math.max(31, refreshInterval) : refreshInterval;
   const hasCustomSettings = () => {
     const gw = localStorage.getItem('lt_gateway_id');
     const dev = localStorage.getItem('lt_device_id');
@@ -645,12 +646,12 @@ export default function App() {
                is_rf_linked: (window as any).cachedCloudStatus !== 'Offline',
                battery: (window as any).cachedCloudBattery || 100,
                signal: (window as any).cachedCloudSignal || 100,
-               is_watering: st.watering != null || st.onDuration > 0 || st.status === 'Watering',
+               is_watering: st.isWatering === true || st.watering != null || st.onDuration > 0 || st.status === 'Watering',
                speed: st.vel || st.speed || 0,
                volume: st.vol || st.volume || 0,
                is_fall: false,
                is_broken: false,
-               remain_duration: st.remain_duration || st.remaining || (st.watering && st.watering.remaining ? st.watering.remaining * 60 : 0)
+               remain_duration: st.remain_duration || st.remainingSeconds || st.remaining || (st.watering && st.watering.remaining ? st.watering.remaining * 60 : 0)
              };
            } catch (e) {
              console.warn('Cloud API parsing issue', e);
@@ -826,7 +827,7 @@ export default function App() {
          }
       }, lockDuration);
       
-      const refreshDelay = apiMode === 'cloud' ? 16000 : 2500;
+      const refreshDelay = apiMode === 'cloud' ? 32000 : 2500;
       setTimeout(() => setManualRefresh(Date.now()), refreshDelay); // Speed up next poll to detect change faster
     } catch (err: any) {
       addLog('danger', `API Start command failed: ${err.message}`);
@@ -901,7 +902,7 @@ export default function App() {
          }
       }, lockDuration);
       
-      const refreshDelay = apiMode === 'cloud' ? 16000 : 2500;
+      const refreshDelay = apiMode === 'cloud' ? 32000 : 2500;
       setTimeout(() => setManualRefresh(Date.now()), refreshDelay); // Speed up next poll to detect change faster
     } catch (err: any) {
       addLog('danger', `API Stop command failed: ${err.message}`);
@@ -1730,7 +1731,7 @@ export default function App() {
                    {(!cloudUsername || !cloudApiKey) && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'center' }}>Enter Cloud Username & API Key above to enable auto-discovery.</div>}
                 </div>
                 
-                <div><label className="form-label">Polling Refresh Rate: {effectiveInterval}s</label><input type="range" min={apiMode === 'cloud' ? "15" : "2"} max={apiMode === 'cloud' ? "60" : "30"} className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
+                <div><label className="form-label">Polling Refresh Rate: {effectiveInterval}s</label><input type="range" min={apiMode === 'cloud' ? "31" : "2"} max={apiMode === 'cloud' ? "120" : "30"} className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
 
                 <button 
                   className="btn-primary" 
