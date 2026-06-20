@@ -843,7 +843,13 @@ export default function App() {
         try { const errJson = JSON.parse(errText); if (errJson.message) errText = errJson.message; } catch(e) {}
         throw new Error(`HTTP Error: ${response.status} ${errText}`);
       }
-      const data = await response.json();
+      let text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`API returned invalid JSON: ${text.substring(0, 50)}...`);
+      }
       if (data.result === 'error') throw new Error(`LinkTap API Error: ${data.message}`);
       addLog('success', 'API Start command received by Gateway.');
       
@@ -918,7 +924,13 @@ export default function App() {
         try { const errJson = JSON.parse(errText); if (errJson.message) errText = errJson.message; } catch(e) {}
         throw new Error(`HTTP Error: ${response.status} ${errText}`);
       }
-      const data = await response.json();
+      let text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`API returned invalid JSON: ${text.substring(0, 50)}...`);
+      }
       if (data.result === 'error') throw new Error(`LinkTap API Error: ${data.message}`);
       addLog('success', 'API Stop command received by Gateway.');
       
@@ -1410,7 +1422,7 @@ export default function App() {
                    </select>
                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
                      <input type="checkbox" checked={washDownResumeNormal} onChange={(e) => setWashDownResumeNormal(e.target.checked)} />
-                     Resume Normal Run Profile when timer expires
+                     Resume Normal Run when timer expires
                    </label>
                  </div>
                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
