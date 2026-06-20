@@ -666,6 +666,8 @@ export default function App() {
            } catch (e) {
              console.warn('Cloud API parsing issue', e);
            }
+        } else {
+           console.log("RAW LOCAL API POLLING DATA:", data);
         }
         
         // LinkTap's firmware has battery and signal values swapped internally, 
@@ -1387,6 +1389,55 @@ export default function App() {
 
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
 
+            {/* Mode 2: Wash Down Mode */}
+            <div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-blue)', marginBottom: '12px' }}>Wash Down Mode</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Unlimited water flow for a set duration.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                 <div>
+                   <label className="form-label">Duration</label>
+                   <select className="form-input" value={washDownDuration} onChange={(e) => setWashDownDuration(Number(e.target.value))}>
+                     <option value={5}>5 Minutes</option>
+                     <option value={15}>15 Minutes</option>
+                     <option value={30}>30 Minutes</option>
+                     <option value={60}>60 Minutes</option>
+                     <option value={120}>2 Hours</option>
+                     <option value={240}>4 Hours</option>
+                     <option value={480}>8 Hours</option>
+                     <option value={720}>12 Hours</option>
+                     <option value={1440}>24 Hours</option>
+                   </select>
+                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                     <input type="checkbox" checked={washDownResumeNormal} onChange={(e) => setWashDownResumeNormal(e.target.checked)} />
+                     Resume Normal Run when timer expires
+                   </label>
+                 </div>
+                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                   <button
+                     disabled={!!isCommandLoading}
+                     onClick={() => {
+                        if (washDownResumeNormal) {
+                           const transitionMs = Date.now() + (washDownDuration * 60000);
+                           washDownTransitionTimeRef.current = transitionMs;
+                           // Send hardware duration of Washdown + 5 minutes buffer so it doesn't turn off.
+                           // Our software polling loop will catch the transition and reprogram it!
+                           executeStartCommand(washDownDuration + 5, 0);
+                        } else {
+                           washDownTransitionTimeRef.current = null;
+                           executeStartCommand(washDownDuration, 99999);
+                        }
+                     }}
+                     className="btn-primary"
+                     style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', fontSize: '0.95rem' }}
+                   >
+                     {isCommandLoading === 'start' ? '⏳ STARTING...' : (isCommandLoading === 'stop' ? '⏳ STOPPING...' : (isWatering ? '🌊 OVERRIDE WITH WASH DOWN' : '🌊 START WASH DOWN'))}
+                   </button>
+                 </div>
+              </div>
+            </div>
+
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+
             {/* Mode 1: Fill a Tank */}
             <div>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '12px' }}>Fill a Tank / Custom Run Time</h3>
@@ -1425,55 +1476,6 @@ export default function App() {
               >
                 {isCommandLoading === 'start' ? '⏳ STARTING...' : (isCommandLoading === 'stop' ? '⏳ STOPPING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '💧 START TANK FILL'))}
               </button>
-            </div>
-
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
-
-            {/* Mode 2: Wash Down Mode */}
-            <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-blue)', marginBottom: '12px' }}>Wash Down Mode</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>Unlimited water flow for a set duration.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                 <div>
-                   <label className="form-label">Duration</label>
-                   <select className="form-input" value={washDownDuration} onChange={(e) => setWashDownDuration(Number(e.target.value))}>
-                     <option value={5}>5 Minutes</option>
-                     <option value={15}>15 Minutes</option>
-                     <option value={30}>30 Minutes</option>
-                     <option value={60}>60 Minutes</option>
-                     <option value={120}>2 Hours</option>
-                     <option value={240}>4 Hours</option>
-                     <option value={480}>8 Hours</option>
-                     <option value={720}>12 Hours</option>
-                     <option value={1440}>24 Hours</option>
-                   </select>
-                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
-                     <input type="checkbox" checked={washDownResumeNormal} onChange={(e) => setWashDownResumeNormal(e.target.checked)} />
-                     Resume Normal Run when timer expires
-                   </label>
-                 </div>
-                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                   <button
-                     disabled={isWatering || !!isCommandLoading}
-                     onClick={() => {
-                        if (washDownResumeNormal) {
-                           const transitionMs = Date.now() + (washDownDuration * 60000);
-                           washDownTransitionTimeRef.current = transitionMs;
-                           // Send hardware duration of Washdown + 5 minutes buffer so it doesn't turn off.
-                           // Our software polling loop will catch the transition and reprogram it!
-                           executeStartCommand(washDownDuration + 5, 0);
-                        } else {
-                           washDownTransitionTimeRef.current = null;
-                           executeStartCommand(washDownDuration, 99999);
-                        }
-                     }}
-                     className="btn-primary"
-                     style={{ width: '100%', padding: '12px', background: isWatering ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', color: isWatering ? '#888' : '#fff', fontSize: '0.95rem' }}
-                   >
-                     {isCommandLoading === 'start' ? '⏳ STARTING...' : (isCommandLoading === 'stop' ? '⏳ STOPPING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '🌊 START WASH DOWN'))}
-                   </button>
-                 </div>
-              </div>
             </div>
 
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
