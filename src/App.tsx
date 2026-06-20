@@ -566,12 +566,36 @@ export default function App() {
         setErrorMsg(null);
         // LinkTap local HTTP API POST endpoint
         let response;
+
         if (apiMode === 'cloud') {
+           // getWateringStatus has a 15-second rate limit. getAllDevices has a 5-minute rate limit.
+           // We poll getWateringStatus every 15s to get real-time flow.
            response = await unifiedFetch('https://www.link-tap.com/api/getWateringStatus', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey, taplinkerId: deviceId })
            });
+
+           // Poll getAllDevices every 5 minutes (300000ms) to update Battery and Signal
+           if (Date.now() - (window as any).lastCloudDevicePoll > 300000 || !(window as any).lastCloudDevicePoll) {
+               try {
+                   const devRes = await unifiedFetch('https://www.link-tap.com/api/getAllDevices', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey })
+                   });
+                   const devData = await devRes.json();
+                   if (devData.result === 'ok' && devData.devices) {
+                       const tl = devData.devices[0].taplinker.find((t: any) => t.taplinkerId === deviceId) || devData.devices[0].taplinker[0];
+                       (window as any).cachedCloudBattery = tl.batteryStatus ? parseInt(tl.batteryStatus.replace('%','')) : 100;
+                       (window as any).cachedCloudSignal = tl.signal ? parseInt(tl.signal.replace('%','')) : 100;
+                       (window as any).cachedCloudStatus = tl.status;
+                       (window as any).lastCloudDevicePoll = Date.now();
+                   }
+               } catch (e) {
+                   console.warn('Failed to fetch battery/signal', e);
+               }
+           }
         } else {
            response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
              method: 'POST',
@@ -596,7 +620,12 @@ export default function App() {
         }
 
         if (data.result === 'error' && data.message) {
-           throw new Error(data.message);
+           // For getWateringStatus, "error" usually means it's not watering.
+           if (apiMode === 'cloud' && data.message.toLowerCase().includes('error')) {
+               data = { status: { watering: null } }; // Mock an idle response
+           } else {
+               throw new Error(data.message);
+           }
         }
         
         if (apiMode === 'local' && data.ret !== undefined && data.ret !== 0) {
@@ -611,12 +640,11 @@ export default function App() {
         }
         if (apiMode === 'cloud') {
            try {
-             // getWateringStatus returns an object with a status field or directly the status
              const st = data.status || data;
              data = {
-               is_rf_linked: true, // Assuming online if responding
-               battery: 100, // getWateringStatus doesn't return battery, mock it
-               signal: 100,
+               is_rf_linked: (window as any).cachedCloudStatus !== 'Offline',
+               battery: (window as any).cachedCloudBattery || 100,
+               signal: (window as any).cachedCloudSignal || 100,
                is_watering: st.watering != null || st.onDuration > 0 || st.status === 'Watering',
                speed: st.vel || st.speed || 0,
                volume: st.vol || st.volume || 0,
