@@ -16,15 +16,20 @@ export default defineConfig({
         name: 'Boat & RV Guardian',
         short_name: 'Guardian',
         description: 'A smart dashboard for using LinkTap as a burst pipe auto-shutoff system.',
-        theme_color: '#0d1527',
-        background_color: '#0a0f1d',
+        theme_color: '#1e293b',
+        background_color: '#0f172a',
         display: 'standalone',
-        start_url: './',
+        start_url: '/Boat-RV-Guardian/app/index.html',
         icons: [
           {
-            src: 'app_icon.jpg',
-            sizes: '1024x1024',
-            type: 'image/jpeg',
+            src: 'app_icon_192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'app_icon_512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any maskable'
           }
         ]
