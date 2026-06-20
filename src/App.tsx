@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.19';
+const APP_VERSION = '1.0.20';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST') {
@@ -146,6 +146,12 @@ export default function App() {
   const [volume, setVolume] = useState(0.0);
   const [remainDuration, setRemainDuration] = useState(0);
 
+  // --- Historical Data Tracking ---
+  const [enableHistory, setEnableHistory] = useState(() => localStorage.getItem('lt_enable_history') !== 'false');
+  const [usageHistory, setUsageHistory] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem('lt_usage_history') || '{}'); } catch { return {}; }
+  });
+
   // --- App Diagnostics & Console Logs ---
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'mock'>('mock');
   const [lastUpdated, setLastUpdated] = useState<string>('Never');
@@ -154,8 +160,10 @@ export default function App() {
     { time: new Date().toLocaleTimeString(), type: 'info', message: 'Boat Guard dashboard initialized.' },
     { time: new Date().toLocaleTimeString(), type: 'info', message: 'Mock Mode enabled by default. Simulate API events below.' }
   ]);
-      const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showSimulatorModal, setShowSimulatorModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyTab, setHistoryTab] = useState<'hourly'|'daily'|'weekly'|'monthly'>('daily');
 
   // --- Cloud Discovery ---
   const handleDiscover = async () => {
@@ -215,10 +223,15 @@ export default function App() {
   const lastCommandTimeRef = useRef<number>(0);
   const expectedWateringStateRef = useRef<boolean | null>(null);
   const commandTimeoutRef = useRef<any>(null);
+  const previousVolumeRef = useRef<number>(0);
+
+  const [volumeOffset, setVolumeOffset] = useState(0);
+  const [durationOffset, setDurationOffset] = useState(0);
 
   // --- Display Computed Values ---
   const displaySpeed = unitSystem === 'imperial' ? speed * 0.264172 : speed;
-  const displayVolume = unitSystem === 'imperial' ? volume * 0.264172 : volume;
+  const displayVolume = unitSystem === 'imperial' ? Math.max(0, volume - volumeOffset) * 0.264172 : Math.max(0, volume - volumeOffset);
+  const displayRemain = Math.max(0, remainDuration + durationOffset);
   const speedUnit = unitSystem === 'imperial' ? 'Gal/min' : 'L/min';
   const volUnit = unitSystem === 'imperial' ? 'Gallons' : 'Liters';
 
@@ -249,7 +262,12 @@ export default function App() {
     localStorage.setItem('lt_cloud_user', cloudUsername);
     localStorage.setItem('lt_cloud_key', cloudApiKey);
     localStorage.setItem('lt_alert_offline', alertOffline.toString());
-  }, [gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, maxFlowRate, maxDuration, unitSystem, timeZone, resetTime]);
+    localStorage.setItem('lt_enable_history', enableHistory.toString());
+  }, [gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, maxFlowRate, maxDuration, unitSystem, timeZone, resetTime, enableHistory]);
+
+  useEffect(() => {
+    localStorage.setItem('lt_usage_history', JSON.stringify(usageHistory));
+  }, [usageHistory]);
 
   // Log message helper
   const addLog = (type: 'info' | 'warning' | 'danger' | 'success', message: string) => {
@@ -314,10 +332,10 @@ export default function App() {
   }, [alertOffline, isRfLinked, autoGuardEnabled]);
 
   const commandersRef = useRef({ start: null as any });
-  const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem });
+  const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory });
   useEffect(() => {
-    stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem };
-  }, [isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem]);
+    stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory };
+  }, [isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory]);
 
   // --- Real-time Polling Logic ---
   useEffect(() => {
@@ -358,7 +376,14 @@ export default function App() {
           });
           // Add small fluctuation in water speed
           setSpeed((s) => Math.max(1, s + (Math.random() - 0.5) * 0.4));
-          setVolume((v) => v + (stateRef.current.speed * (refreshInterval / 60)));
+          const incVolume = stateRef.current.speed * (refreshInterval / 60);
+          setVolume((v) => v + incVolume);
+          if (stateRef.current.enableHistory) {
+            const now = new Date();
+            now.setMinutes(0, 0, 0); // floor to hour
+            const bucket = now.toISOString();
+            setUsageHistory(prev => ({ ...prev, [bucket]: (prev[bucket] || 0) + incVolume }));
+          }
         }
         return;
       }
@@ -454,7 +479,6 @@ export default function App() {
           }
         }
         
-        // Auto-restart logic check
         if (stateRef.current.isWatering && !newIsWatering && stateRef.current.autoRestartNormal) {
           addLog('info', 'Valve closed. Auto-restart is ON. Restarting Normal Run profile in 5 seconds...');
           setTimeout(() => {
@@ -462,6 +486,11 @@ export default function App() {
              if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
              if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
           }, 5000);
+        }
+        
+        if (stateRef.current.isWatering && !newIsWatering) {
+            setVolumeOffset(0);
+            setDurationOffset(0);
         }
 
         setIsRfLinked(data.is_rf_linked ?? true);
@@ -473,7 +502,23 @@ export default function App() {
         setBattery(data.battery ?? 0);
         setIsWatering(newIsWatering);
         setSpeed(Number(data.speed ?? 0));
-        setVolume(Number(data.volume ?? 0));
+
+        const currentVolume = Number(data.volume ?? 0);
+        if (stateRef.current.enableHistory) {
+          const delta = currentVolume < previousVolumeRef.current 
+              ? currentVolume // cycle restarted, add new volume
+              : currentVolume - previousVolumeRef.current;
+          
+          if (delta > 0) {
+            const now = new Date();
+            now.setMinutes(0, 0, 0); // floor to hour
+            const bucket = now.toISOString();
+            setUsageHistory(prev => ({ ...prev, [bucket]: (prev[bucket] || 0) + delta }));
+          }
+        }
+        previousVolumeRef.current = currentVolume;
+        setVolume(currentVolume);
+
         setRemainDuration(Number(data.remain_duration ?? 0));
         
         setConnectionStatus('connected');
@@ -504,6 +549,8 @@ export default function App() {
     setTargetDuration(durationMins * 60);
     setTargetVolume(volumeLimitLiters);
     if (mockMode) setVolume(0);
+    setVolumeOffset(0);
+    setDurationOffset(0);
 
     // Optimistically lock the buttons so they react immediately
     lastCommandTimeRef.current = Date.now();
@@ -953,7 +1000,7 @@ export default function App() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Time Remaining</span>
-                  <span style={{ fontWeight: 'bold' }}>{remainDuration > 0 ? `${Math.floor(remainDuration / 3600)}h ${Math.floor((remainDuration % 3600) / 60)}m` : 'Unknown / Infinite'}</span>
+                  <span style={{ fontWeight: 'bold' }}>{displayRemain > 0 ? `${Math.floor(displayRemain / 3600)}h ${Math.floor((displayRemain % 3600) / 60)}m` : 'Unknown / Infinite'}</span>
                 </div>
                 {targetDuration > 0 && (
                   <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
@@ -968,6 +1015,7 @@ export default function App() {
                   <span style={{ fontWeight: 'bold' }}>
                     {displayVolume.toFixed(1)} {volUnit}
                     {targetVolume > 0 && ` / ${(unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume).toFixed(1)} ${volUnit} Limit`}
+                    {targetVolume > 0 && ` (${Math.max(0, (unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume) - displayVolume).toFixed(1)} ${volUnit} left)`}
                   </span>
                 </div>
                 {targetVolume > 0 && (
@@ -976,8 +1024,33 @@ export default function App() {
                   </div>
                 )}
               </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <button 
+                  className="btn-secondary" 
+                  onClick={() => setDurationOffset(targetDuration > 0 ? targetDuration - remainDuration : 0)}
+                  style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
+                >
+                  ⏱️ Reset Time
+                </button>
+                <button 
+                  className="btn-secondary" 
+                  onClick={() => setVolumeOffset(volume)}
+                  style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
+                >
+                  💧 Reset Volume
+                </button>
+              </div>
             </div>
           )}
+
+          {/* View Usage Statistics Button */}
+          <button 
+            className="btn-secondary"
+            onClick={() => setShowHistoryModal(true)}
+            style={{ width: '100%', padding: '14px', marginBottom: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 600, border: '1px solid rgba(0, 242, 254, 0.3)' }}
+          >
+            📊 View Usage Statistics
+          </button>
 
           {/* Main Controls Console */}
           <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1372,6 +1445,17 @@ export default function App() {
 
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
 
+                {/* History Tracking */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    Track Historical Usage
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>Store local data (liters/gallons)</span>
+                  </label>
+                  <input type="checkbox" checked={enableHistory} onChange={(e) => setEnableHistory(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                </div>
+                
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
+
                 {/* Update & Version */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>Boat &amp; RV Guardian v{APP_VERSION}</div>
@@ -1435,6 +1519,85 @@ export default function App() {
       <div style={{ position: 'fixed', bottom: '10px', right: '12px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', pointerEvents: 'none', userSelect: 'none', zIndex: 1 }}>
         v{APP_VERSION}
       </div>
+      {/* Usage History Modal */}
+      {showHistoryModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(4,8,20,0.85)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+           <div className="glass-card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>
+              <button onClick={() => setShowHistoryModal(false)} className="btn-secondary" style={{ position: 'absolute', top: '20px', right: '20px', padding: '6px 10px', fontSize: '1rem', zIndex: 10 }}>✕</button>
+              
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '4px' }}>📊 Usage Statistics</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Water volume consumed ({volUnit}).</p>
+              
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+                 {(['hourly','daily','weekly','monthly'] as const).map(tab => (
+                    <button 
+                      key={tab}
+                      onClick={() => setHistoryTab(tab)}
+                      className="btn-secondary"
+                      style={{ 
+                        flex: 1, 
+                        padding: '8px', 
+                        fontSize: '0.8rem', 
+                        textTransform: 'capitalize',
+                        background: historyTab === tab ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)',
+                        color: historyTab === tab ? '#000' : 'var(--text-primary)',
+                        borderColor: historyTab === tab ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)'
+                      }}
+                    >{tab}</button>
+                 ))}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                {(() => {
+                  const data: Record<string, number> = {};
+                  const now = new Date();
+                  Object.entries(usageHistory).forEach(([iso, vol]) => {
+                    const d = new Date(iso);
+                    let key = '';
+                    if (historyTab === 'hourly') {
+                       if (now.getTime() - d.getTime() > 24 * 3600000) return;
+                       key = d.toLocaleTimeString([], {hour: '2-digit'});
+                    } else if (historyTab === 'daily') {
+                       if (now.getTime() - d.getTime() > 7 * 24 * 3600000) return;
+                       key = d.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'});
+                    } else if (historyTab === 'weekly') {
+                       if (now.getTime() - d.getTime() > 30 * 24 * 3600000) return;
+                       const diff = d.getDate() - d.getDay();
+                       const weekStart = new Date(new Date(d).setDate(diff));
+                       key = 'Week of ' + weekStart.toLocaleDateString([], {month: 'short', day: 'numeric'});
+                    } else {
+                       if (now.getTime() - d.getTime() > 365 * 24 * 3600000) return;
+                       key = d.toLocaleDateString([], {month: 'short', year: 'numeric'});
+                    }
+                    data[key] = (data[key] || 0) + vol;
+                  });
+
+                  const entries = Object.entries(data);
+                  if (entries.length === 0) return <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>No historical data available for this timeframe.</div>;
+
+                  const maxVol = Math.max(...entries.map(e => e[1]));
+
+                  return entries.map(([label, v]) => {
+                     const displayV = unitSystem === 'imperial' ? v * 0.264172 : v;
+                     const displayMax = unitSystem === 'imperial' ? maxVol * 0.264172 : maxVol;
+                     const width = displayMax > 0 ? (displayV / displayMax) * 100 : 0;
+                     return (
+                       <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                           <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+                           <span style={{ fontWeight: 600 }}>{displayV.toFixed(1)} {volUnit}</span>
+                         </div>
+                         <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                           <div style={{ width: `${width}%`, height: '100%', background: 'linear-gradient(90deg, #00f2fe, #4facfe)', borderRadius: '4px' }}></div>
+                         </div>
+                       </div>
+                     );
+                  });
+                })()}
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }
