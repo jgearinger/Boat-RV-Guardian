@@ -21,6 +21,7 @@ jobs:
         run: |
           npm ci
           npm run build
+          cp dist/manifest.webmanifest dist/app/manifest.webmanifest || true
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4

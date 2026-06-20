@@ -567,10 +567,10 @@ export default function App() {
         // LinkTap local HTTP API POST endpoint
         let response;
         if (apiMode === 'cloud') {
-           response = await unifiedFetch('https://www.link-tap.com/api/getAllDevices', {
+           response = await unifiedFetch('https://www.link-tap.com/api/getWateringStatus', {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey })
+             body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey, taplinkerId: deviceId })
            });
         } else {
            response = await unifiedFetch(`http://${gatewayIp}/api.shtml`, {
@@ -609,19 +609,20 @@ export default function App() {
         if (!response.ok) {
            throw new Error(`HTTP Error status: ${response.status}`);
         }
-        if (apiMode === 'cloud' && data.devices) {
+        if (apiMode === 'cloud') {
            try {
-             const tl = data.devices[0].taplinker.find((t: any) => t.taplinkerId === deviceId) || data.devices[0].taplinker[0];
+             // getWateringStatus returns an object with a status field or directly the status
+             const st = data.status || data;
              data = {
-               is_rf_linked: tl.status !== 'Offline',
-               battery: tl.batteryStatus ? parseInt(tl.batteryStatus.replace('%','')) : 100,
-               signal: tl.signal ? parseInt(tl.signal.replace('%','')) : 100,
-               is_watering: tl.watering != null,
-               speed: tl.vel || 0,
-               volume: tl.vol || 0,
-               is_fall: tl.fall === true,
-               is_broken: tl.broken === true,
-               remain_duration: tl.remain_duration || (tl.watering && tl.watering.remaining ? tl.watering.remaining * 60 : 0)
+               is_rf_linked: true, // Assuming online if responding
+               battery: 100, // getWateringStatus doesn't return battery, mock it
+               signal: 100,
+               is_watering: st.watering != null || st.onDuration > 0 || st.status === 'Watering',
+               speed: st.vel || st.speed || 0,
+               volume: st.vol || st.volume || 0,
+               is_fall: false,
+               is_broken: false,
+               remain_duration: st.remain_duration || st.remaining || (st.watering && st.watering.remaining ? st.watering.remaining * 60 : 0)
              };
            } catch (e) {
              console.warn('Cloud API parsing issue', e);
@@ -797,7 +798,8 @@ export default function App() {
          }
       }, lockDuration);
       
-      setTimeout(() => setManualRefresh(Date.now()), 2500); // Speed up next poll to detect change faster
+      const refreshDelay = apiMode === 'cloud' ? 16000 : 2500;
+      setTimeout(() => setManualRefresh(Date.now()), refreshDelay); // Speed up next poll to detect change faster
     } catch (err: any) {
       addLog('danger', `API Start command failed: ${err.message}`);
       setErrorMsg(err.message);
@@ -871,7 +873,8 @@ export default function App() {
          }
       }, lockDuration);
       
-      setTimeout(() => setManualRefresh(Date.now()), 2500); // Speed up next poll to detect change faster
+      const refreshDelay = apiMode === 'cloud' ? 16000 : 2500;
+      setTimeout(() => setManualRefresh(Date.now()), refreshDelay); // Speed up next poll to detect change faster
     } catch (err: any) {
       addLog('danger', `API Stop command failed: ${err.message}`);
       setErrorMsg(err.message);
