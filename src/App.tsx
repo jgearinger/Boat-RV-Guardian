@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.21';
+const APP_VERSION = '1.0.22';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST') {
@@ -1017,14 +1017,12 @@ export default function App() {
                     {targetVolume > 0 && ` / ${(unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume).toFixed(1)} ${volUnit} Limit`}
                   </span>
                 </div>
-                {targetVolume > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Volume Remaining</span>
-                    <span style={{ fontWeight: 'bold' }}>
-                       {Math.max(0, (unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume) - displayVolume).toFixed(1)} {volUnit}
-                    </span>
-                  </div>
-                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Volume Remaining</span>
+                  <span style={{ fontWeight: 'bold' }}>
+                     {targetVolume > 0 ? `${Math.max(0, (unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume) - displayVolume).toFixed(1)} ${volUnit}` : 'Unknown / Infinite'}
+                  </span>
+                </div>
                 {targetVolume > 0 && (
                   <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, Math.max(0, (displayVolume / Math.max(1, unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume)) * 100))}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 1s linear' }}></div>
@@ -1179,15 +1177,6 @@ export default function App() {
               </button>
             </div>
           </div>
-          
-          {/* View Usage Statistics Button */}
-          <button 
-            className="btn-secondary"
-            onClick={() => setShowHistoryModal(true)}
-            style={{ width: '100%', padding: '14px', marginTop: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 600, border: '1px solid rgba(0, 242, 254, 0.3)' }}
-          >
-            📊 View Usage Statistics
-          </button>
         </section>
 
         {/* Right Column: Daily Monitoring */}
@@ -1230,6 +1219,15 @@ export default function App() {
           
         </section>
       </main>
+
+      {/* View Usage Statistics Button */}
+      <button 
+        className="btn-secondary"
+        onClick={() => setShowHistoryModal(true)}
+        style={{ width: '100%', padding: '14px', margin: '24px auto', maxWidth: '800px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', fontSize: '1rem', fontWeight: 600, border: '1px solid rgba(0, 242, 254, 0.3)' }}
+      >
+        📊 View Usage Statistics
+      </button>
 
       {/* Settings Modal */}
       {showSettingsModal && (
