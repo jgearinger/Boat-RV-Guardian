@@ -47,8 +47,7 @@ This application utilizes advanced API endpoints that require specific hardware 
 Before you can use this dashboard, you **must** use the official LinkTap mobile app to perform the initial hardware setup. The LinkTap API does not support initial hardware pairing.
 1. Download the official LinkTap app on your smartphone.
 2. Follow their instructions to connect the Gateway to your Wi-Fi network.
-3. **Crucial:** Register/pair the Gateway to your account using the official LinkTap app.
-4. Use the official app to pair the G2S Valve (TapLinker) to your Gateway.
+3. Use the official app to pair the G2S Valve (TapLinker) to your Gateway.
 5. Once the devices are online and successfully tested in the official app, you can proceed to connect them to this dashboard.
 
 ### Connecting the App to your Hardware
