@@ -1077,6 +1077,8 @@ export default function App() {
             </div>
           </div>
         </div>
+      </header>
+
       {/* Main Content Area */}
       <main className="main-layout">
         
