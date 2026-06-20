@@ -510,7 +510,7 @@ export default function App() {
     previousWatering.current = isWatering;
   }, [isWatering, notifyWatering]);
 
-  const commandersRef = useRef({ start: null as any });
+  const commandersRef = useRef({ start: null as any, stop: null as any });
   const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory });
   useEffect(() => {
     stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory };
@@ -738,6 +738,21 @@ export default function App() {
         if (apiTargetDur > 0 && targetDuration === 0) setTargetDuration(apiTargetDur * 60); // assume minutes from API
 
         const currentVolume = Number(data.volume ?? data.vol ?? 0);
+        
+        // Software-enforced volume cutoff
+        // LinkTap hardware often ignores volume limits passed to cmd: 6, so we must enforce it here!
+        if (newIsWatering && targetVolume > 0 && currentVolume > 0) {
+           const limitInApiUnits = stateRef.current.unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume;
+           if (currentVolume >= limitInApiUnits) {
+              if (commandersRef.current.stop && expectedWateringStateRef.current !== false) {
+                 addLog('success', `Target volume limit reached. Sending software-enforced stop command.`);
+                 commandersRef.current.stop('limit');
+                 expectedWateringStateRef.current = false;
+                 setIsCommandLoading('stop');
+              }
+           }
+        }
+
         if (stateRef.current.enableHistory) {
           const delta = currentVolume < previousVolumeRef.current 
               ? currentVolume // cycle restarted, add new volume
@@ -981,6 +996,8 @@ export default function App() {
       setIsCommandLoading(false);
     }
   };
+
+  commandersRef.current.stop = executeStopCommand;
 
   // --- HTML5 Canvas History Graph Rendering ---
   useEffect(() => {
