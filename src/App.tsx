@@ -729,7 +729,7 @@ export default function App() {
         setSpeed(Number(data.speed ?? data.vel ?? 0));
 
         // If targetVolume is 0 (app launched mid-cycle), try to extract it from the API
-        const apiTargetVol = Number(data.target_volume ?? data.limit ?? data.target_vol ?? (data.watering ? data.watering.vol : 0));
+        const apiTargetVol = Number(data.target_volume ?? data.volume_limit ?? data.limit ?? data.target_vol ?? (data.watering ? data.watering.vol : 0));
         if (apiTargetVol > 0 && targetVolume === 0) setTargetVolume(apiTargetVol);
         
         const apiTargetDur = Number(data.target_duration ?? data.totalDuration ?? data.total ?? (data.watering ? data.watering.duration : 0));
