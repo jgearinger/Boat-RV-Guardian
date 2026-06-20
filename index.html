@@ -67,6 +67,33 @@
     </section>
 
     <section>
+      <h2>Why LinkTap vs. Tuya-based Valves?</h2>
+      <p>There are many inexpensive Wi-Fi water valves on the market (often white-labeled through the Tuya smart home platform). However, they are fundamentally inadequate for critical safety applications like Boat/RV flood prevention for several reasons:</p>
+      
+      <div class="grid">
+        <div class="card">
+          <h3 style="color: #ef4444; margin-top: 0;">❌ Standard Smart Valves (Tuya)</h3>
+          <ul>
+            <li><strong>No Flow Meter:</strong> They can only measure time (e.g., "open for 10 minutes"). If a pipe bursts, they have no idea that hundreds of gallons are flowing out.</li>
+            <li><strong>Wi-Fi Battery Drain:</strong> Connecting directly to Wi-Fi burns battery rapidly, meaning they require frequent battery swaps or AC power.</li>
+            <li><strong>Cloud Dependency:</strong> Commands must travel to a remote cloud server and back. If your campground Wi-Fi drops, the valve cannot be controlled.</li>
+            <li><strong>No Hardware Fail-safes:</strong> If the valve loses connection while open, it stays open indefinitely until commanded otherwise.</li>
+          </ul>
+        </div>
+        
+        <div class="card">
+          <h3 style="color: var(--accent-green); margin-top: 0;">✅ LinkTap G2S System</h3>
+          <ul>
+            <li><strong>Built-in Flow Meter:</strong> The G2S actively measures exact water volume and flow rate. This allows the Guardian app to shut off water based on actual gallons consumed.</li>
+            <li><strong>Zigbee Protocol:</strong> The valve communicates over low-power Zigbee to the indoor Gateway, ensuring extreme battery life (up to 2 years) and better penetration through metal/fiberglass RV walls.</li>
+            <li><strong>Local API Support:</strong> Guardian talks directly to the Gateway on your local network. No internet access is required, ensuring instant sub-second response times.</li>
+            <li><strong>Hardware Timers:</strong> Every time the valve opens, a strict duration is sent to the hardware. If the Guardian app or network crashes, the valve's physical hardware timer will forcefully close the valve.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
       <h2>Hardware Requirements</h2>
       <p>To use all features of the Guardian app, specific LinkTap hardware is required:</p>
       <ul>
