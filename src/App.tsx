@@ -131,8 +131,11 @@ export default function App() {
 
   // --- User Preferences ---
   const [unitSystem, setUnitSystem] = useState<'metric' | 'imperial'>(() => localStorage.getItem('lt_unit') as 'metric' | 'imperial' || 'imperial');
-  const [timeZone, setTimeZone] = useState(() => localStorage.getItem('lt_tz') || 'America/New_York');
-  const [resetTime, setResetTime] = useState(() => localStorage.getItem('lt_reset_time') || '00:00');
+  const [timeZone, setTimeZone] = useState(() => localStorage.getItem('lt_tz') || ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'));
+  const [resetTime, setResetTime] = useState(() => localStorage.getItem('lt_reset_time') || '12:00');
+
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('lt_notifications') === 'true');
+  const [alarmSound, setAlarmSound] = useState<'siren' | 'beep' | 'off'>(() => (localStorage.getItem('lt_alarm_sound') as any) || 'siren');
 
   // --- Real-time API States (matched to G2S Gateway Schema) ---
   const [isRfLinked, setIsRfLinked] = useState(true);
@@ -275,13 +278,15 @@ export default function App() {
     localStorage.setItem('lt_auto_restart', autoRestartNormal.toString());
     localStorage.setItem('lt_target_dur', targetDuration.toString());
     localStorage.setItem('lt_target_vol', targetVolume.toString());
+    localStorage.setItem('lt_notifications', notificationsEnabled.toString());
+    localStorage.setItem('lt_alarm_sound', alarmSound);
   }, [
     gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, 
     maxFlowRate, maxDuration, unitSystem, timeZone, resetTime, enableHistory,
     apiMode, cloudUsername, cloudApiKey, alertOffline,
     inputDuration, inputVolume, delayedStartMins, delayedStartSecs, washDownDuration,
     normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
-    targetDuration, targetVolume, isPollingActive
+    targetDuration, targetVolume, isPollingActive, notificationsEnabled, alarmSound
   ]);
 
   useEffect(() => {
@@ -291,6 +296,103 @@ export default function App() {
   // Log message helper
   const addLog = (type: 'info' | 'warning' | 'danger' | 'success', message: string) => {
     setLogs((prev) => [{ time: new Date().toLocaleTimeString(), type, message }, ...prev.slice(0, 49)]);
+  };
+
+  const playSynthesizedAlarm = () => {
+    if (alarmSound === 'off') return;
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      if (alarmSound === 'siren') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.5);
+        osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 1.0);
+        osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 1.5);
+        osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 2.0);
+        
+        gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2.0);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 2.0);
+      } else if (alarmSound === 'beep') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1000, ctx.currentTime);
+        gainNode.gain.setValueAtTime(1, ctx.currentTime);
+        gainNode.gain.setValueAtTime(0, ctx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(1, ctx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0, ctx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(1, ctx.currentTime + 0.4);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+      }
+    } catch (e) {
+      console.error('AudioContext failed:', e);
+    }
+  };
+
+  const triggerAlert = async (title: string, message: string) => {
+    playSynthesizedAlarm();
+    addLog('danger', `${title}: ${message}`);
+    
+    if (!notificationsEnabled) return;
+    
+    if ('Notification' in window && typeof (window as any).Capacitor === 'undefined' && !isTauriEnv()) {
+      if (Notification.permission === 'granted') {
+        new Notification(title, { body: message });
+      } else if (Notification.permission !== 'denied') {
+        const p = await Notification.requestPermission();
+        if (p === 'granted') new Notification(title, { body: message });
+      }
+    }
+    
+    if (isTauriEnv()) {
+      try {
+        const { isPermissionGranted, requestPermission, sendNotification } = await import('@tauri-apps/plugin-notification');
+        let permissionGranted = await isPermissionGranted();
+        if (!permissionGranted) {
+          const permission = await requestPermission();
+          permissionGranted = permission === 'granted';
+        }
+        if (permissionGranted) {
+          sendNotification({ title, body: message });
+        }
+      } catch (e) {
+        console.error('Tauri notification failed:', e);
+      }
+    }
+
+    if (typeof (window as any).Capacitor !== 'undefined') {
+      const Cap = (window as any).Capacitor;
+      if (Cap.isNativePlatform() && Cap.Plugins && Cap.Plugins.LocalNotifications) {
+        try {
+          const LN = Cap.Plugins.LocalNotifications;
+          let p = await LN.checkPermissions();
+          if (p.display !== 'granted') {
+             p = await LN.requestPermissions();
+          }
+          if (p.display === 'granted') {
+            await LN.schedule({
+              notifications: [{
+                  title,
+                  body: message,
+                  id: Math.floor(Math.random() * 100000),
+                  schedule: { at: new Date(Date.now() + 1000) }
+              }]
+            });
+          }
+        } catch (e) {
+          console.error('Capacitor notification failed:', e);
+        }
+      }
+    }
   };
 
   // Listen for PWA Install Prompt
@@ -331,22 +433,21 @@ export default function App() {
       }
       
       if (triggered && isWatering) {
-        addLog('danger', `⚠️ SAFETY SENTRY TRIGGERED: ${cause} Shutting down valve...`);
+        triggerAlert('Safety Sentry Triggered', `${cause} Shutting down valve...`);
         executeStopCommand('limit');
       }
     }
   }, [speed, isBroken, isLeak, isWatering, autoGuardEnabled, maxFlowRate, displaySpeed, speedUnit]);
 
-  // Isolate Fall and Offline alerts to prevent infinite log loops when speed fluctuates
   useEffect(() => {
     if (isFall && autoGuardEnabled) {
-      addLog('danger', '🚨 SENTRY ALERT: Fall / Theft detected!');
+      triggerAlert('Fall/Theft Detected', 'The device has reported a fall or physical anomaly!');
     }
   }, [isFall, autoGuardEnabled]);
 
   useEffect(() => {
     if (alertOffline && !isRfLinked && autoGuardEnabled) {
-      addLog('warning', '⚠️ SENTRY ALERT: TapLinker went OFFLINE. Please check connection!');
+      triggerAlert('Device Offline', 'The LinkTap gateway is offline or disconnected.');
     }
   }, [alertOffline, isRfLinked, autoGuardEnabled]);
 
@@ -1005,8 +1106,8 @@ export default function App() {
                   <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{isRfLinked ? 'LINK OK' : 'LINK STUCK'}</div>
                 </div>
                 <div style={{ borderLeft: '3px solid var(--accent-emerald)', paddingLeft: '12px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Hardware Integrity</span>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{!isFall && !isClog && !isBroken ? 'NOMINAL' : 'ALERT'}</div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Connection Status</span>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{!isFall && !isClog && !isBroken ? 'Stable' : 'ALERT'}</div>
                 </div>
               </div>
             </div>
@@ -1328,6 +1429,31 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                   <input type="checkbox" checked={alertOffline} onChange={(e) => setAlertOffline(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-orange)' }} />
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Alert me if device goes offline</span>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Notifications & Alarms</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', color: notificationsEnabled ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>{notificationsEnabled ? 'ENABLED' : 'DISABLED'}</span>
+                    <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label className="form-label">Warning Alarm Sound</label>
+                    <select className="form-input" value={alarmSound} onChange={(e) => setAlarmSound(e.target.value as any)}>
+                      <option value="siren">🚨 Siren (Loud)</option>
+                      <option value="beep">⚠️ Beep (Standard)</option>
+                      <option value="off">🔇 Silent</option>
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <button onClick={() => triggerAlert('Test Alert', 'This is a test of the Boat & RV Guardian alert system.')} className="btn-secondary" style={{ width: '100%', padding: '12px' }}>Test Alert System</button>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
