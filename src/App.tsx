@@ -207,17 +207,17 @@ export default function App() {
   };
 
   // --- Manual Irrigation Inputs ---
-  const [inputDuration, setInputDuration] = useState(15);
-  const [inputVolume, setInputVolume] = useState(50);
-  const [delayedStartMins, setDelayedStartMins] = useState(0);
-  const [delayedStartSecs, setDelayedStartSecs] = useState(15);
-  const [washDownDuration, setWashDownDuration] = useState(30);
-  const [normalRunHours, setNormalRunHours] = useState(24);
-  const [normalRunMinutes, setNormalRunMinutes] = useState(0);
-  const [normalRunVolume, setNormalRunVolume] = useState(300);
-  const [autoRestartNormal, setAutoRestartNormal] = useState(false);
-  const [targetDuration, setTargetDuration] = useState(0);
-  const [targetVolume, setTargetVolume] = useState(0);
+  const [inputDuration, setInputDuration] = useState(() => Number(localStorage.getItem('lt_input_dur') || '15'));
+  const [inputVolume, setInputVolume] = useState(() => Number(localStorage.getItem('lt_input_vol') || '50'));
+  const [delayedStartMins, setDelayedStartMins] = useState(() => Number(localStorage.getItem('lt_del_mins') || '0'));
+  const [delayedStartSecs, setDelayedStartSecs] = useState(() => Number(localStorage.getItem('lt_del_secs') || '15'));
+  const [washDownDuration, setWashDownDuration] = useState(() => Number(localStorage.getItem('lt_wash_dur') || '30'));
+  const [normalRunHours, setNormalRunHours] = useState(() => Number(localStorage.getItem('lt_norm_hrs') || '24'));
+  const [normalRunMinutes, setNormalRunMinutes] = useState(() => Number(localStorage.getItem('lt_norm_mins') || '0'));
+  const [normalRunVolume, setNormalRunVolume] = useState(() => Number(localStorage.getItem('lt_norm_vol') || '300'));
+  const [autoRestartNormal, setAutoRestartNormal] = useState(() => localStorage.getItem('lt_auto_restart') === 'true');
+  const [targetDuration, setTargetDuration] = useState(() => Number(localStorage.getItem('lt_target_dur') || '0'));
+  const [targetVolume, setTargetVolume] = useState(() => Number(localStorage.getItem('lt_target_vol') || '0'));
   const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [isCommandLoading, setIsCommandLoading] = useState<'start' | 'stop' | false>(false);
@@ -264,7 +264,25 @@ export default function App() {
     localStorage.setItem('lt_cloud_key', cloudApiKey);
     localStorage.setItem('lt_alert_offline', alertOffline.toString());
     localStorage.setItem('lt_enable_history', enableHistory.toString());
-  }, [gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, maxFlowRate, maxDuration, unitSystem, timeZone, resetTime, enableHistory]);
+    localStorage.setItem('lt_input_dur', inputDuration.toString());
+    localStorage.setItem('lt_input_vol', inputVolume.toString());
+    localStorage.setItem('lt_del_mins', delayedStartMins.toString());
+    localStorage.setItem('lt_del_secs', delayedStartSecs.toString());
+    localStorage.setItem('lt_wash_dur', washDownDuration.toString());
+    localStorage.setItem('lt_norm_hrs', normalRunHours.toString());
+    localStorage.setItem('lt_norm_mins', normalRunMinutes.toString());
+    localStorage.setItem('lt_norm_vol', normalRunVolume.toString());
+    localStorage.setItem('lt_auto_restart', autoRestartNormal.toString());
+    localStorage.setItem('lt_target_dur', targetDuration.toString());
+    localStorage.setItem('lt_target_vol', targetVolume.toString());
+  }, [
+    gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, 
+    maxFlowRate, maxDuration, unitSystem, timeZone, resetTime, enableHistory,
+    apiMode, cloudUsername, cloudApiKey, alertOffline,
+    inputDuration, inputVolume, delayedStartMins, delayedStartSecs, washDownDuration,
+    normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
+    targetDuration, targetVolume, isPollingActive
+  ]);
 
   useEffect(() => {
     localStorage.setItem('lt_usage_history', JSON.stringify(usageHistory));
