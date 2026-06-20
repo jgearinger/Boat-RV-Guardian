@@ -88,8 +88,6 @@ interface FlowData {
 export default function App() {
   // --- Environment Detection for CORS/Network Safety ---
   const isNativeApp = isTauriEnv() || typeof (window as any).Capacitor !== 'undefined';
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const canUseRealConnection = isNativeApp || isLocalhost;
 
   // --- Persistent Gateway & Device Configuration ---
   const [apiMode, setApiMode] = useState<'local' | 'cloud'>(() => (localStorage.getItem('lt_api_mode') as 'local' | 'cloud') || 'local');
@@ -116,10 +114,8 @@ export default function App() {
   });
 
   const [mockMode, setMockMode] = useState(() => {
-    if (!canUseRealConnection) return true;
     const stored = localStorage.getItem('lt_mock');
-    // If they explicitly turned mock mode ON recently, maybe respect it, but if they have custom settings, default to real connection.
-    if (stored === 'true' && !hasCustomSettings()) return true;
+    if (stored !== null) return stored === 'true';
     if (hasCustomSettings()) return false;
     return true; // Default to mock mode out of the box
   });
@@ -232,7 +228,8 @@ export default function App() {
   const [targetVolume, setTargetVolume] = useState(() => Number(localStorage.getItem('lt_target_vol') || '0'));
   const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
-  const [isCommandLoading, setIsCommandLoading] = useState<'start' | 'stop' | false>(false);
+  // --- App State ---
+  const [isCommandLoading, setIsCommandLoading] = useState<boolean | 'start' | 'stop'>(false);
   const lastCommandTimeRef = useRef<number>(0);
   const expectedWateringStateRef = useRef<boolean | null>(null);
   const commandTimeoutRef = useRef<any>(null);
