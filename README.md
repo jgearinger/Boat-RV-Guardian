@@ -1,8 +1,8 @@
 # Boat & RV Guardian 🚤🚐
 
-A beautiful, specialized smart dashboard that transforms the LinkTap ecosystem into an advanced auto-shutoff and monitoring system for Boats and RVs. 
+A free, open-source water safety dashboard using LinkTap hardware. This specialized application transforms the standard LinkTap ecosystem into an advanced auto-shutoff and monitoring system specifically tailored to protect Boats and RVs from catastrophic internal floods.
 
-Instead of dealing with generic gardening schedules, this app is specifically tailored for preventing catastrophic internal floods by monitoring marine and RV water hookups.
+Unlike traditional gardening irrigation, this application monitors municipal water hookups for marine and RV use, offering granular control, flow monitoring, and real-time safety automation.
 
 ## 📥 Download App
 Get the native app for the best experience (required for Local API support). All versions are available on the [GitHub Releases Page](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest).
@@ -16,15 +16,16 @@ Read the full setup guide, see how the system works, and launch the live web das
 
 👉 **[View Documentation Website](https://jgearinger.github.io/Boat-RV-Guardian/)**
 👉 **[Launch Live Web Dashboard](https://jgearinger.github.io/Boat-RV-Guardian/app/)**
-## Features
+
+## 🌟 Key Features
 
 *   **Flooding Auto-Guard Sentry**: Runs locally in your browser. Constantly monitors water flow rate and pipe integrity. If the flow speed exceeds your safety limit (e.g. from a burst pipe inside the boat), it immediately shuts off the main valve.
-*   **Offline & Theft Alerts**: Immediately warns you if the physical TapLinker loses connection or triggers a physical fall/tamper alarm.
+*   **Granular Local Notifications & Alarms**: Opt-in to specific alerts like Fall/Theft detection, Device Offline warnings, Low Battery states, or Water Start/Stop events. Complete with customizable alert volume and sounds (Beep or Siren).
 *   **Tank Fill Mode**: Precisely fill your onboard fresh water tanks. Set a target volume (e.g., 50 Gallons) and the valve will automatically shut off when the exact amount is reached. Features a visual progress ring and remaining time estimator.
 *   **Delayed Start**: Set a precise minutes/seconds countdown before a tank fill begins, giving you time to hook up hoses or walk away.
 *   **Wash Down Mode**: Instantly open the valve for a preset time (5m up to 24h) to wash down the deck or flush the engine.
-*   **Normal Run Mode**: An always-on or cycled profile for providing city water to your boat. You can set it to auto-restart its cycle.
 *   **API Agnostic**: Connect directly over your Local Network (`http://192.168.x.x`) for instant, ultra-low latency commands, or use the **LinkTap Cloud API** to monitor and control your water from anywhere in the world!
+*   **Modern, Dynamic UI**: A premium dark-mode interface with beautiful glassmorphism, responsive micro-animations, and real-time data visualization.
 
 ---
 
@@ -35,16 +36,17 @@ Read the full setup guide, see how the system works, and launch the live web das
 > 
 > 📖 **[Read the Full Physical Setup & Best Practices Guide](PHYSICAL_SETUP.md)**
 
-### Supported Hardware
-This application utilizes advanced API endpoints that are only available on newer LinkTap hardware.
-*   **Gateway**: You must have the **LinkTap G2S** Gateway or newer.
-*   **TapLinker**: You must have a **TapLinker with Flow Meter** (e.g., G2S TapLinker). Older generations (like G1) do not report real-time flow speed and cannot trigger the burst pipe Sentry.
+### Required Hardware
+This application utilizes advanced API endpoints that require specific hardware components:
+1. **LinkTap Gateway (GW-01 or GW-02)**: Bridges your Wi-Fi network to the smart valve. Required for both Cloud and Local API communication.
+2. **LinkTap Smart Valve (G2S)**: You must use a valve *with a built-in Flow Meter* (like the G2S). Older models cannot report real-time flow speed and cannot trigger the burst pipe Sentry.
+3. **Pressure Regulator**: A standard 40-50 PSI brass water pressure regulator placed *before* the smart valve is highly recommended to protect both the valve and your vehicle's plumbing.
 
 ### Connecting the App to your Hardware
 You can use the **Cloud API** (works anywhere) or the **Local API** (works only on your home network/boat router).
 
 #### Option 1: Cloud API (Recommended)
-This is the easiest method and allows the dashboard to be used from any web browser without security restrictions.
+This is the easiest method and allows the dashboard to be used from any web browser.
 1. Open the official LinkTap Mobile App.
 2. Go to **Settings** -> **API Configuration**.
 3. Generate an API Key. Note your **Username** and **API Key**.
@@ -58,26 +60,23 @@ This is the easiest method and allows the dashboard to be used from any web brow
 The Local API is incredibly fast but does not work on public web versions (like GitHub Pages) due to browser CORS security policies. 
 1. Assign a **Static IP** to your LinkTap Gateway via your router's DHCP reservation page.
 2. Ensure you know your Gateway's IP address (e.g., `192.168.1.100`).
-3. You will need your 16-character **Gateway ID** and **TapLinker ID** (printed on the stickers on the back of the physical devices).
+3. Find your 16-character **Gateway ID** and **TapLinker ID** (printed on the stickers on the back of the physical devices).
 4. Enter these into the Hardware Connections panel and click **▶ Apply & Connect**.
 
 ---
 
-## 🌐 Web Version Notice
-If you are using the public web-hosted version of this app (e.g., on GitHub Pages), **the Local HTTP API is disabled**. Modern web browsers physically block websites on the internet from connecting directly to local devices (like `192.168.x.x`) for security reasons. 
+## 💻 Development & Building
 
-To use the Local API, you must either download the native desktop/mobile app version of this dashboard or run the source code on your local machine using Node.js.
+If you are using the public web-hosted version of this app (e.g., on GitHub Pages), **the Local HTTP API is disabled** due to browser security policies. To use the Local API, download the native desktop/mobile app version or run the source code locally.
 
-## Running Locally for Development
-
+### Running Locally for Development
 ```bash
 npm install
 npm run dev
 ```
 
-## Building for Production / GitHub Pages
-
+### Building for Production
 ```bash
 npm run build
+npm run tauri build
 ```
-Push the `dist` folder to your static host.
