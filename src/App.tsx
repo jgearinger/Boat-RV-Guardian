@@ -588,8 +588,8 @@ export default function App() {
                    const devData = await devRes.json();
                    if (devData.result === 'ok' && devData.devices) {
                        const tl = devData.devices[0].taplinker.find((t: any) => t.taplinkerId === deviceId) || devData.devices[0].taplinker[0];
-                       (window as any).cachedCloudBattery = tl.batteryStatus ? parseInt(tl.batteryStatus.replace('%','')) : 100;
-                       (window as any).cachedCloudSignal = tl.signal ? parseInt(tl.signal.replace('%','')) : 100;
+                       (window as any).cachedCloudBattery = tl.batteryStatus ? parseInt(String(tl.batteryStatus).replace('%','')) : 100;
+                       (window as any).cachedCloudSignal = tl.signal ? parseInt(String(tl.signal).replace('%','')) : 100;
                        (window as any).cachedCloudStatus = tl.status;
                        (window as any).lastCloudDevicePoll = Date.now();
                    }
