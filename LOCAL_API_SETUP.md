@@ -10,7 +10,14 @@ Here is exactly how to configure Google Chrome or Microsoft Edge to allow the co
 
 > **Important:** Safari permanently bans mixed content and cannot be used for the Local API on the web. You must use Chrome, Edge, or Firefox.
 
-## Step 1: Install & Enable a CORS Extension
+## Step 1: LinkTap Hardware Setup
+**Note:** The LinkTap API does not support initial hardware pairing. You *must* use the official LinkTap app for this first step.
+
+1. Follow the official LinkTap instructions to connect your Gateway to your home Wi-Fi network.
+2. Insert batteries into the LinkTap G2S Valve and pair it with the Gateway using the official LinkTap mobile app.
+3. Verify that you can manually turn the water on and off using the official LinkTap app before proceeding.
+
+## Step 2: Install & Enable a CORS Extension
 
 Browsers require the gateway to send `Access-Control-Allow-Origin` headers. Since the LinkTap gateway doesn't send these, we use an extension to inject them.
 
@@ -18,7 +25,7 @@ Browsers require the gateway to send `Access-Control-Allow-Origin` headers. Sinc
 2. Once installed, click the **Puzzle Piece** icon in your browser toolbar and pin the extension so you can see it.
 3. Click the extension icon and toggle the main switch to **ON**. The icon will usually change from gray to colored to indicate it is active.
 
-## Step 2: Allow "Insecure Content" (Crucial)
+## Step 3: Allow "Insecure Content" (Crucial)
 
 Even with the CORS extension on, Chrome will block the connection because it is a "Mixed Content" violation (HTTPS trying to fetch from HTTP).
 
@@ -30,7 +37,7 @@ Even with the CORS extension on, Chrome will block the connection because it is 
 6. Close the Site Settings tab. 
 7. Chrome will show a banner at the top of the dashboard asking you to reload. Click **Reload** (or do a hard refresh: `Cmd + Shift + R`).
 
-## Step 3: Connect!
+## Step 4: Connect!
 
 1. Open the dashboard Settings (gear icon).
 2. Go to **Hardware Connections** and select **Local API**.
