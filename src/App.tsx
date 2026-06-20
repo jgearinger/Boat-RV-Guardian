@@ -453,6 +453,11 @@ export default function App() {
            } catch (e) {
              console.warn('Cloud API parsing issue', e);
            }
+        } else if (apiMode === 'local') {
+          // LinkTap Local API actually returns battery in the signal field, and signal in the battery field.
+          const tempBattery = data.battery;
+          data.battery = data.signal;
+          data.signal = tempBattery;
         }
         
         const newIsWatering = (data.is_watering === true || data.is_watering === 'true' || data.is_watering === 1 || data.is_watering === '1');
