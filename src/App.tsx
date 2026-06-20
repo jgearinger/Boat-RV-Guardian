@@ -654,6 +654,8 @@ export default function App() {
                is_watering: st.isWatering === true || st.watering != null || st.onDuration > 0 || st.status === 'Watering',
                speed: st.vel || st.speed || 0,
                volume: st.vol || st.volume || 0,
+               target_volume: st.limit || st.target_vol || (st.watering ? st.watering.vol : 0) || 0,
+               target_duration: st.totalDuration || st.total || (st.watering ? st.watering.duration : 0) || 0,
                is_fall: false,
                is_broken: false,
                remain_duration: st.remain_duration || st.remainingSeconds || st.remaining || 
@@ -724,9 +726,16 @@ export default function App() {
         setSignal(data.signal ?? 0);
         setBattery(data.battery ?? 0);
         setIsWatering(newIsWatering);
-        setSpeed(Number(data.speed ?? 0));
+        setSpeed(Number(data.speed ?? data.vel ?? 0));
 
-        const currentVolume = Number(data.volume ?? 0);
+        // If targetVolume is 0 (app launched mid-cycle), try to extract it from the API
+        const apiTargetVol = Number(data.target_volume ?? data.limit ?? data.target_vol ?? (data.watering ? data.watering.vol : 0));
+        if (apiTargetVol > 0 && targetVolume === 0) setTargetVolume(apiTargetVol);
+        
+        const apiTargetDur = Number(data.target_duration ?? data.totalDuration ?? data.total ?? (data.watering ? data.watering.duration : 0));
+        if (apiTargetDur > 0 && targetDuration === 0) setTargetDuration(apiTargetDur * 60); // assume minutes from API
+
+        const currentVolume = Number(data.volume ?? data.vol ?? 0);
         if (stateRef.current.enableHistory) {
           const delta = currentVolume < previousVolumeRef.current 
               ? currentVolume // cycle restarted, add new volume
@@ -829,6 +838,7 @@ export default function App() {
             taplinkerId: deviceId,
             action: true,
             duration: durationMins, // Cloud API takes minutes
+            vol: Math.round(volumeLimitLiters), // Added volume limit parameter for Cloud API to match Local API
             autoBack: true
           }),
         });
