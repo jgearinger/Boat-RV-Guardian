@@ -63,6 +63,11 @@
       <h2>Project Overview</h2>
       <p>Boats and RVs are susceptible to water damage from burst pipes when connected to municipal water supplies. <strong>Boat & RV Guardian</strong> serves as an automated safety sentry using the <a href="https://www.link-tap.com" target="_blank" style="color: var(--accent);">LinkTap</a> API.</p>
       
+      <div style="text-align: center; margin: 30px 0;">
+        <img src="flood_warning.png" alt="Illustration of a flooded RV and Boat" style="max-width: 100%; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.4);" />
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 10px;">A burst pipe while connected to city water can cause catastrophic flooding if left unchecked.</p>
+      </div>
+
       <p>Instead of relying purely on hardware limits, the Guardian app runs on your device and sends a continuous "heartbeat" to the valve. If a pipe bursts and water usage exceeds your configured safe limits (duration or volume), the valve shuts off. If your device loses internet or the app is closed, the LinkTap hardware's fail-safe kicks in and shuts the valve down automatically.</p>
     </section>
 
@@ -133,7 +138,7 @@
 
       <div class="card">
         <h3>Step 2: Connect via Local API (Recommended)</h3>
-        <p>Because LinkTap does not expose Cloud API keys in their app or portal (they must be explicitly requested from LinkTap Support), the <strong>Local HTTP API</strong> is the primary and recommended way to use Guardian. It provides internet-free reliability and immediate response times.</p>
+        <p>Because setting up a Cloud API Key requires logging into the LinkTap web portal on a computer, the <strong>Local HTTP API</strong> is the primary and recommended way to use Guardian. It provides internet-free reliability and immediate response times.</p>
         <p><em>Note: Due to browser security (CORS), the Local API is only supported using our native Desktop or Android apps.</em></p>
         <ol>
           <li>Open the official LinkTap mobile app.</li>
@@ -146,7 +151,7 @@
 
       <div class="card">
         <h3>Step 3: Connect via Cloud API (Web Dashboard)</h3>
-        <p>If you prefer to use the web-based dashboard and have successfully requested a <strong>Cloud API Key</strong> from LinkTap Support, you can connect via the cloud.</p>
+        <p>If you prefer to use the web-based dashboard, you can generate a <strong>Cloud API Key</strong> by logging into the <a href="https://www.link-tap.com/#!/api-for-developers" target="_blank" style="color: var(--accent);">LinkTap API for Developers</a> page. Then connect via the cloud:</p>
         <ol>
           <li>Open the <a href="app/" style="color: var(--accent);">Web Dashboard</a>.</li>
           <li>Click the <strong>Settings (⚙️)</strong> icon in the top right.</li>

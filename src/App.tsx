@@ -100,6 +100,7 @@ export default function App() {
   const [gatewayId, setGatewayId] = useState(() => localStorage.getItem('lt_gateway_id') || 'GW_02_MOCK');
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || 'TAP_MOCK_1');
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '5'));
+  const effectiveInterval = apiMode === 'cloud' ? Math.max(15, refreshInterval) : refreshInterval;
   const hasCustomSettings = () => {
     const gw = localStorage.getItem('lt_gateway_id');
     const dev = localStorage.getItem('lt_device_id');
@@ -357,7 +358,7 @@ export default function App() {
         // Count down remaining watering time
         if (stateRef.current.isWatering && stateRef.current.remainDuration > 0) {
           setRemainDuration((d) => {
-            const nextD = d - refreshInterval;
+            const nextD = d - effectiveInterval;
             if (nextD <= 0) {
               setIsWatering(false);
               setSpeed(0);
@@ -376,7 +377,7 @@ export default function App() {
           });
           // Add small fluctuation in water speed
           setSpeed((s) => Math.max(1, s + (Math.random() - 0.5) * 0.4));
-          const incVolume = stateRef.current.speed * (refreshInterval / 60);
+          const incVolume = stateRef.current.speed * (effectiveInterval / 60);
           setVolume((v) => v + incVolume);
           if (stateRef.current.enableHistory) {
             const now = new Date();
@@ -469,7 +470,7 @@ export default function App() {
             setIsCommandLoading(false);
             if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
           } else {
-            const lockDuration = Math.max(30000, refreshInterval * 1000 + 5000);
+            const lockDuration = Math.max(30000, effectiveInterval * 1000 + 5000);
             if (Date.now() - lastCommandTimeRef.current < lockDuration) {
               // Still waiting for valve to move. Ignore this old state so UI doesn't flicker!
               setIsRfLinked(data.is_rf_linked ?? true);
@@ -543,9 +544,9 @@ export default function App() {
     };
 
     poll();
-    const timer = setInterval(poll, refreshInterval * 1000);
+    const timer = setInterval(poll, effectiveInterval * 1000);
     return () => clearInterval(timer);
-  }, [apiMode, gatewayIp, gatewayId, deviceId, isPollingActive, refreshInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
+  }, [apiMode, gatewayIp, gatewayId, deviceId, isPollingActive, refreshInterval, effectiveInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
 
   // --- API Action Commanders ---
   
@@ -610,7 +611,7 @@ export default function App() {
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       addLog('success', 'API Start command received by Gateway.');
       
-      const lockDuration = Math.max(30000, refreshInterval * 1000 + 5000);
+      const lockDuration = Math.max(30000, effectiveInterval * 1000 + 5000);
       commandTimeoutRef.current = setTimeout(() => {
          if (expectedWateringStateRef.current !== null) {
              expectedWateringStateRef.current = null;
@@ -678,7 +679,7 @@ export default function App() {
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
       addLog('success', 'API Stop command received by Gateway.');
       
-      const lockDuration = Math.max(30000, refreshInterval * 1000 + 5000);
+      const lockDuration = Math.max(30000, effectiveInterval * 1000 + 5000);
       commandTimeoutRef.current = setTimeout(() => {
          if (expectedWateringStateRef.current !== null) {
              expectedWateringStateRef.current = null;
@@ -943,7 +944,7 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Real-Time Flow Analysis</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Data refreshed every {refreshInterval}s • Last update: {lastUpdated}</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Data refreshed every {effectiveInterval}s • Last update: {lastUpdated}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>VALVE STATUS</span>
@@ -1437,7 +1438,7 @@ export default function App() {
                    {(!cloudUsername || !cloudApiKey) && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', textAlign: 'center' }}>Enter Cloud Username & API Key above to enable auto-discovery.</div>}
                 </div>
                 
-                <div><label className="form-label">Polling Refresh Rate: {refreshInterval}s</label><input type="range" min="2" max="30" className="form-input" style={{ padding: 0 }} value={refreshInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
+                <div><label className="form-label">Polling Refresh Rate: {effectiveInterval}s</label><input type="range" min={apiMode === 'cloud' ? "15" : "2"} max={apiMode === 'cloud' ? "60" : "30"} className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
 
                 <button 
                   className="btn-primary" 
