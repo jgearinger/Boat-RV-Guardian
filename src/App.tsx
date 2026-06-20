@@ -221,6 +221,7 @@ export default function App() {
   const [delayedStartMins, setDelayedStartMins] = useState(() => Number(localStorage.getItem('lt_del_mins') || '0'));
   const [delayedStartSecs, setDelayedStartSecs] = useState(() => Number(localStorage.getItem('lt_del_secs') || '15'));
   const [washDownDuration, setWashDownDuration] = useState(() => Number(localStorage.getItem('lt_wash_dur') || '30'));
+  const [washDownResumeNormal, setWashDownResumeNormal] = useState(() => localStorage.getItem('lt_wd_resume') === 'true');
   const [normalRunHours, setNormalRunHours] = useState(() => Number(localStorage.getItem('lt_norm_hrs') || '24'));
   const [normalRunMinutes, setNormalRunMinutes] = useState(() => Number(localStorage.getItem('lt_norm_mins') || '0'));
   const [normalRunVolume, setNormalRunVolume] = useState(() => Number(localStorage.getItem('lt_norm_vol') || '300'));
@@ -235,6 +236,8 @@ export default function App() {
   const expectedWateringStateRef = useRef<boolean | null>(null);
   const commandTimeoutRef = useRef<any>(null);
   const previousVolumeRef = useRef<number>(0);
+  const washDownTransitionTimeRef = useRef<number | null>(null);
+  const lastPollTimeRef = useRef<number>(0);
 
   const [volumeOffset, setVolumeOffset] = useState(0);
   const [durationOffset, setDurationOffset] = useState(0);
@@ -279,6 +282,7 @@ export default function App() {
     localStorage.setItem('lt_del_mins', delayedStartMins.toString());
     localStorage.setItem('lt_del_secs', delayedStartSecs.toString());
     localStorage.setItem('lt_wash_dur', washDownDuration.toString());
+    localStorage.setItem('lt_wd_resume', washDownResumeNormal.toString());
     localStorage.setItem('lt_norm_hrs', normalRunHours.toString());
     localStorage.setItem('lt_norm_mins', normalRunMinutes.toString());
     localStorage.setItem('lt_norm_vol', normalRunVolume.toString());
@@ -730,6 +734,21 @@ export default function App() {
         previousVolumeRef.current = currentVolume;
         setVolume(currentVolume);
 
+        if (washDownTransitionTimeRef.current) {
+          const remainingMs = washDownTransitionTimeRef.current - Date.now();
+          if (remainingMs <= 0) {
+            // Washdown timer expired! Reprogram to Normal Cycle!
+            addLog('info', 'Washdown complete! Resuming Normal Run profile without shutting off valve...');
+            washDownTransitionTimeRef.current = null;
+            let vol = stateRef.current.normalRunVolume;
+            if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
+            if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
+          } else {
+            // Override UI remain duration so it shows the exact Washdown time instead of Washdown + Buffer
+            data.remain_duration = Math.round(remainingMs / 1000);
+          }
+        }
+
         setRemainDuration(Number(data.remain_duration ?? 0));
         
         setConnectionStatus('connected');
@@ -745,10 +764,16 @@ export default function App() {
         const env = isTauriEnv() ? '(Native Proxy)' : '(Browser)';
         const errMsg = err instanceof Error ? err.message : (err && err.message ? err.message : String(err));
         setErrorMsg(`Failed to connect to gateway ${env}: ${errMsg}`);
+      } finally {
+        lastPollTimeRef.current = Date.now();
       }
     };
 
-    poll();
+    const timeSinceLastPoll = Date.now() - lastPollTimeRef.current;
+    if (timeSinceLastPoll >= effectiveInterval * 1000 - 1000 || Date.now() - manualRefresh < 1000 || lastPollTimeRef.current === 0) {
+      poll();
+    }
+    
     const timer = setInterval(poll, effectiveInterval * 1000);
     return () => clearInterval(timer);
   }, [apiMode, gatewayIp, gatewayId, deviceId, isPollingActive, refreshInterval, effectiveInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
@@ -1383,11 +1408,26 @@ export default function App() {
                      <option value={720}>12 Hours</option>
                      <option value={1440}>24 Hours</option>
                    </select>
+                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                     <input type="checkbox" checked={washDownResumeNormal} onChange={(e) => setWashDownResumeNormal(e.target.checked)} />
+                     Resume Normal Run Profile when timer expires
+                   </label>
                  </div>
                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                    <button
                      disabled={isWatering || !!isCommandLoading}
-                     onClick={() => executeStartCommand(washDownDuration, 99999)}
+                     onClick={() => {
+                        if (washDownResumeNormal) {
+                           const transitionMs = Date.now() + (washDownDuration * 60000);
+                           washDownTransitionTimeRef.current = transitionMs;
+                           // Send hardware duration of Washdown + 5 minutes buffer so it doesn't turn off.
+                           // Our software polling loop will catch the transition and reprogram it!
+                           executeStartCommand(washDownDuration + 5, 0);
+                        } else {
+                           washDownTransitionTimeRef.current = null;
+                           executeStartCommand(washDownDuration, 99999);
+                        }
+                     }}
                      className="btn-primary"
                      style={{ width: '100%', padding: '12px', background: isWatering ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', color: isWatering ? '#888' : '#fff', fontSize: '0.95rem' }}
                    >
