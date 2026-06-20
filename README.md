@@ -47,9 +47,9 @@ You can use the **Cloud API** (works anywhere) or the **Local API** (works only 
 
 #### Option 1: Cloud API (Recommended)
 This is the easiest method and allows the dashboard to be used from any web browser.
-1. Open the official LinkTap Mobile App.
-2. Go to **Settings** -> **API Configuration**.
-3. Generate an API Key. Note your **Username** and **API Key**.
+1. Log into the [LinkTap Web Portal](https://www.link-tap.com/#!/api-for-developers) from a desktop or tablet browser. (The API key is no longer accessible via the mobile app).
+2. Go to **Settings** and generate your API Key. 
+3. Note your **Username** and **API Key**.
 4. Open the **Boat & RV Guardian** dashboard.
 5. Open **Settings** -> **Hardware Connections**.
 6. Select **Cloud API** from the dropdown.
