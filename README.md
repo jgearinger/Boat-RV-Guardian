@@ -13,10 +13,10 @@ Get the native app for the best experience (required for Local API support). All
 [![Launch Web App](https://img.shields.io/badge/Launch-Web_App-00F2FE?style=for-the-badge&logo=googlechrome&logoColor=black)](https://jgearinger.github.io/Boat-RV-Guardian/app/)
 
 ## 🌐 Website & Live Demo
-Read the full setup guide, see how the system works, and launch the live web dashboard (Simulator mode enabled) directly from our website:
+Read the full setup guide, see how the system works, and launch the live web app (Simulator mode enabled) directly from our website:
 
 👉 **[View Documentation Website](https://jgearinger.github.io/Boat-RV-Guardian/)**
-👉 **[Launch Live Web Dashboard](https://jgearinger.github.io/Boat-RV-Guardian/app/)**
+👉 **[Launch Live Web App](https://jgearinger.github.io/Boat-RV-Guardian/app/)**
 
 ## 🌟 Key Features
 
@@ -43,6 +43,13 @@ This application utilizes advanced API endpoints that require specific hardware 
 2. **LinkTap Smart Valve (G2S)**: You must use a valve *with a built-in Flow Meter* (like the G2S). Older models cannot report real-time flow speed and cannot trigger the burst pipe Sentry.
 3. **Pressure Regulator**: A standard 40-50 PSI brass water pressure regulator placed *before* the smart valve is highly recommended to protect both the valve and your vehicle's plumbing.
 
+### Initial Setup & Pairing
+Before you can use this dashboard, you **must** use the official LinkTap mobile app to perform the initial hardware setup. The LinkTap API does not support initial hardware pairing.
+1. Download the official LinkTap app on your smartphone.
+2. Follow their instructions to connect the Gateway to your Wi-Fi network.
+3. Use the official app to pair the G2S Valve (TapLinker) to your Gateway.
+4. Once the devices are online and successfully tested in the official app, you can proceed to connect them to this dashboard.
+
 ### Connecting the App to your Hardware
 You can use the **Cloud API** (works anywhere) or the **Local API** (works only on your home network/boat router).
 
@@ -68,7 +75,12 @@ The Local API is incredibly fast but does not work on public web versions (like 
 
 ## 💻 Development & Building
 
-If you are using the public web-hosted version of this app (e.g., on GitHub Pages), **the Local HTTP API is disabled** due to browser security policies. To use the Local API, download the native desktop/mobile app version or run the source code locally.
+### Desktop/Native Apps (Recommended)
+Native apps for Mac & Windows are provided. They are **highly recommended** because they bypass browser CORS security and mixed-content blocking completely, meaning the Local HTTP API will work flawlessly out-of-the-box with zero configuration.
+
+### Web Dashboard
+You can run this entirely in the browser using the [live web dashboard](https://jgearinger.github.io/Boat-RV-Guardian/).
+However, modern browsers will block the Local API from communicating via the web dashboard due to strict security rules. To bypass this and use the blazing-fast Local API in the browser, please follow the [Local API Web Setup Guide](LOCAL_API_SETUP.md).
 
 ### Running Locally for Development
 ```bash
