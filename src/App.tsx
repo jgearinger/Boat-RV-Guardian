@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.18';
+const APP_VERSION = '1.0.19';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST') {
@@ -430,7 +430,7 @@ export default function App() {
            }
         }
         
-        const newIsWatering = data.is_watering ?? false;
+        const newIsWatering = (data.is_watering === true || data.is_watering === 'true' || data.is_watering === 1 || data.is_watering === '1');
 
         if (expectedWateringStateRef.current !== null) {
           if (newIsWatering === expectedWateringStateRef.current) {
@@ -505,12 +505,11 @@ export default function App() {
     setTargetVolume(volumeLimitLiters);
     if (mockMode) setVolume(0);
 
-    // Optimistically update UI so buttons react immediately
+    // Optimistically lock the buttons so they react immediately
     lastCommandTimeRef.current = Date.now();
     expectedWateringStateRef.current = true;
-    setIsWatering(true);
-    setRemainDuration(durationMins * 60);
-    if (!mockMode) setSpeed(0);
+    if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
+    setIsCommandLoading('start');
 
     addLog('info', `Sending API command: START watering. Duration: ${durationMins}m, Limit: ${volumeLimitLiters}L`);
     
@@ -572,7 +571,6 @@ export default function App() {
       setErrorMsg(err.message);
       expectedWateringStateRef.current = null;
       setIsCommandLoading(false);
-      setIsWatering(false); // Revert optimistic update
     }
   };
 
@@ -592,8 +590,6 @@ export default function App() {
 
     lastCommandTimeRef.current = Date.now();
     expectedWateringStateRef.current = false;
-    setIsWatering(false); // Optimistically update UI
-    setSpeed(0);
     
     if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
     setIsCommandLoading('stop');
@@ -643,7 +639,6 @@ export default function App() {
       setErrorMsg(err.message);
       expectedWateringStateRef.current = null;
       setIsCommandLoading(false);
-      setIsWatering(true); // Revert optimistic update
     }
   };
 
