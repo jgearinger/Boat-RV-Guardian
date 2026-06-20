@@ -898,6 +898,7 @@ export default function App() {
 
     lastCommandTimeRef.current = Date.now();
     expectedWateringStateRef.current = false;
+    washDownTransitionTimeRef.current = null;
     
     if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
     setIsCommandLoading('stop');
