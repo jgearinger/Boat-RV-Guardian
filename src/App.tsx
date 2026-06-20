@@ -1430,7 +1430,7 @@ export default function App() {
                      className="btn-primary"
                      style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff', fontSize: '0.95rem' }}
                    >
-                     {isCommandLoading === 'start' ? '⏳ STARTING...' : (isCommandLoading === 'stop' ? '⏳ STOPPING...' : (isWatering ? '🌊 OVERRIDE WITH WASH DOWN' : '🌊 START WASH DOWN'))}
+                     {isCommandLoading === 'start' ? '⏳ STARTING...' : (isCommandLoading === 'stop' ? '⏳ STOPPING...' : (isWatering ? ((targetVolume >= 9999 || washDownTransitionTimeRef.current !== null) ? '🌊 RESTART WASH DOWN' : '🌊 OVERRIDE WITH WASH DOWN') : '🌊 START WASH DOWN'))}
                    </button>
                  </div>
               </div>
