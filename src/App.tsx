@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.17';
+const APP_VERSION = '1.0.18';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST') {
@@ -211,7 +211,7 @@ export default function App() {
   const [targetVolume, setTargetVolume] = useState(0);
   const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
-  const [isCommandLoading, setIsCommandLoading] = useState(false);
+  const [isCommandLoading, setIsCommandLoading] = useState<'start' | 'stop' | false>(false);
   const lastCommandTimeRef = useRef<number>(0);
   const expectedWateringStateRef = useRef<boolean | null>(null);
   const commandTimeoutRef = useRef<any>(null);
@@ -524,7 +524,7 @@ export default function App() {
     }
 
     if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
-    setIsCommandLoading(true);
+    setIsCommandLoading('start');
     try {
       setErrorMsg(null);
       let response;
@@ -596,7 +596,7 @@ export default function App() {
     setSpeed(0);
     
     if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
-    setIsCommandLoading(true);
+    setIsCommandLoading('stop');
     try {
       setErrorMsg(null);
       let response;
@@ -1008,7 +1008,7 @@ export default function App() {
                 </div>
               </div>
               <button
-                disabled={isWatering || isCommandLoading}
+                disabled={isWatering || !!isCommandLoading}
                 onClick={() => {
                    let vol = normalRunVolume;
                    if (unitSystem === 'imperial') vol = vol / 0.264172; // Convert to liters for API
@@ -1017,7 +1017,7 @@ export default function App() {
                 className="btn-primary"
                 style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '0.95rem', background: isWatering ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #10b981, #059669)', color: isWatering ? '#888' : '#fff' }}
               >
-                {isCommandLoading ? '⏳ STARTING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '▶ START NORMAL RUN')}
+                {isCommandLoading === 'start' ? '⏳ STARTING...' : (isCommandLoading === 'stop' ? '⏳ STOPPING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '▶ START NORMAL RUN'))}
               </button>
             </div>
 
@@ -1044,7 +1044,7 @@ export default function App() {
                 </div>
               </div>
               <button
-                disabled={isWatering || isCommandLoading}
+                disabled={isWatering || !!isCommandLoading}
                 onClick={() => {
                    let vol = inputVolume;
                    if (unitSystem === 'imperial') vol = vol / 0.264172; // Convert back to liters for API
@@ -1059,7 +1059,7 @@ export default function App() {
                 className="btn-primary"
                 style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '0.95rem', background: isWatering ? 'rgba(255,255,255,0.1)' : undefined, color: isWatering ? '#888' : '#fff' }}
               >
-                {isCommandLoading ? '⏳ STARTING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '💧 START TANK FILL')}
+                {isCommandLoading === 'start' ? '⏳ STARTING...' : (isCommandLoading === 'stop' ? '⏳ STOPPING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '💧 START TANK FILL'))}
               </button>
             </div>
 
@@ -1086,12 +1086,12 @@ export default function App() {
                  </div>
                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                    <button
-                     disabled={isWatering || isCommandLoading}
+                     disabled={isWatering || !!isCommandLoading}
                      onClick={() => executeStartCommand(washDownDuration, 99999)}
                      className="btn-primary"
                      style={{ width: '100%', padding: '12px', background: isWatering ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #3b82f6, #2563eb)', color: isWatering ? '#888' : '#fff', fontSize: '0.95rem' }}
                    >
-                     {isCommandLoading ? '⏳ STARTING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '🌊 START WASH DOWN')}
+                     {isCommandLoading === 'start' ? '⏳ STARTING...' : (isCommandLoading === 'stop' ? '⏳ STOPPING...' : (isWatering ? '🛑 STOP CURRENT CYCLE FIRST' : '🌊 START WASH DOWN'))}
                    </button>
                  </div>
               </div>
@@ -1102,12 +1102,12 @@ export default function App() {
             {/* Instant Off Button */}
             <div>
               <button
-                disabled={isCommandLoading}
+                disabled={!!isCommandLoading}
                 onClick={() => executeStopCommand('manual')}
                 className="btn-danger-glow"
                 style={{ width: '100%', padding: '16px 20px', fontSize: '1.1rem' }}
               >
-                🛑 {isCommandLoading ? 'STOPPING...' : 'Instant Valve Close (STOP)'}
+                🛑 {isCommandLoading === 'stop' ? 'STOPPING...' : 'Instant Valve Close (STOP)'}
               </button>
             </div>
           </div>
