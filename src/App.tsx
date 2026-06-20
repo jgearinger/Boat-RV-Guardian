@@ -849,7 +849,7 @@ export default function App() {
       let usedLocal = false;
 
       // 1. Always attempt Cloud API first for maximum safety (hardware volume cutoffs)
-      if (cloudUsername && cloudApiKey) {
+      if (isCloudPollingActive && cloudUsername && cloudApiKey) {
         try {
           const cloudRes = await unifiedFetch('https://www.link-tap.com/api/activateInstantMode', {
             method: 'POST',
@@ -1203,6 +1203,13 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Network Mode Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.75rem', fontWeight: 600 }}>
+              <span style={{ marginRight: '6px' }}>🌐</span>
+              {isCloudPollingActive && isLocalPollingActive ? 'Cloud & Local Mode' : 
+               isCloudPollingActive ? 'Cloud Only Mode' : 
+               isLocalPollingActive ? 'Local Only Mode' : 'Offline / Disconnected'}
+            </div>
             {/* Battery Indicator */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={battery < 15 ? 'var(--accent-red)' : 'var(--accent-emerald)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1339,7 +1346,20 @@ export default function App() {
                 </div>
                 <div style={{ borderLeft: '3px solid var(--accent-emerald)', paddingLeft: '12px' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Device Mounting</span>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{!isFall && !isClog && !isBroken ? 'Secure' : 'ALERT'}</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: (!isFall && !isClog && !isBroken) ? 'inherit' : 'var(--accent-red)' }}>
+                    {!isFall && !isClog && !isBroken ? 'Secure' : 'ALERT'}
+                  </div>
+                  {(isFall || isClog || isBroken || isLeak) && (
+                    <button 
+                      onClick={() => {
+                        clearAlarms();
+                        setActiveAlarmSound(null);
+                      }} 
+                      style={{ marginTop: '4px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer' }}
+                    >
+                      Acknowledge & Reset
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
