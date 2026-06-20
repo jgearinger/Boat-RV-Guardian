@@ -657,6 +657,7 @@ export default function App() {
                is_fall: false,
                is_broken: false,
                remain_duration: st.remain_duration || st.remainingSeconds || st.remaining || 
+                                (st.total != null && st.onDuration != null ? ((Number(st.total) * 60 + Number(st.totalSec || 0)) - (Number(st.onDuration) * 60 + Number(st.onDurSec || 0))) : 0) ||
                                 (st.totalDuration ? (st.totalDuration * 60) - (st.onDuration || 0) : 0) || 
                                 (st.watering && st.watering.remaining ? st.watering.remaining * 60 : 0)
              };
