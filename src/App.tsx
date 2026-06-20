@@ -1148,19 +1148,6 @@ export default function App() {
         </div>
       )}
       
-      {/* Software Cutoff Warning Banner */}
-      {isSoftwareCutoffActive && (
-        <div style={{ position: 'fixed', top: activeAlarmSound ? '60px' : 0, left: 0, right: 0, background: 'linear-gradient(90deg, #b91c1c, #991b1b)', color: '#fff', padding: '12px 20px', textAlign: 'center', zIndex: 9998, boxShadow: '0 4px 20px rgba(185, 28, 28, 0.5)', borderBottom: '2px solid rgba(255,255,255,0.2)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '1.3rem' }}>⚠️</span>
-            <span style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '0.5px' }}>DANGER: SOFTWARE VOLUME CUTOFF ACTIVE</span>
-            <span style={{ fontSize: '1.3rem' }}>⚠️</span>
-          </div>
-          <div style={{ fontSize: '0.85rem', fontWeight: 500, opacity: 0.9 }}>
-            Valve was opened via Local API. <strong>DO NOT CLOSE THIS APP OR ALLOW YOUR MAC TO SLEEP</strong>, or your boat will flood! Connect to the Cloud for hardware-enforced protection.
-          </div>
-        </div>
-      )}
       
       {/* Click anywhere handler for alarm */}
       {activeAlarmSound && alarmRepeatInterval !== 'once' && (
@@ -1375,6 +1362,15 @@ export default function App() {
                 <span className="status-dot connected" style={{ marginRight: 0 }}></span>
               </h3>
               
+              {isSoftwareCutoffActive && targetVolume > 0 && (
+                <div style={{ padding: '10px', background: 'rgba(185, 28, 28, 0.15)', borderLeft: '3px solid var(--accent-red)', borderRadius: '4px', fontSize: '0.85rem', color: '#fca5a5', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                  <div>
+                    Your device is in local API only access mode, if you close the app the volume limit will not turn off. The reliability of this mode is limited.
+                  </div>
+                </div>
+              )}
+              
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Time Remaining</span>
@@ -1404,14 +1400,6 @@ export default function App() {
                 {targetVolume > 0 && (
                   <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.min(100, Math.max(0, (displayVolume / Math.max(1, unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume)) * 100))}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 1s linear' }}></div>
-                  </div>
-                )}
-                {isSoftwareCutoffActive && targetVolume > 0 && (
-                  <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(185, 28, 28, 0.15)', border: '1px solid rgba(185, 28, 28, 0.5)', borderRadius: '6px', fontSize: '0.85rem', color: '#fca5a5', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4' }}>
-                    <span style={{ fontSize: '1.1rem' }}>⚠️</span>
-                    <div>
-                      <strong style={{ color: '#fff' }}>DANGER: SOFTWARE CUTOFF ACTIVE.</strong> Do not close the app or let your Mac sleep, or the valve will not shut off at the volume limit!
-                    </div>
                   </div>
                 )}
               </div>
