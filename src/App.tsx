@@ -1386,6 +1386,14 @@ export default function App() {
                     <div style={{ width: `${Math.min(100, Math.max(0, (displayVolume / Math.max(1, unitSystem === 'imperial' ? targetVolume * 0.264172 : targetVolume)) * 100))}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 1s linear' }}></div>
                   </div>
                 )}
+                {isSoftwareCutoffActive && targetVolume > 0 && (
+                  <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(185, 28, 28, 0.15)', border: '1px solid rgba(185, 28, 28, 0.5)', borderRadius: '6px', fontSize: '0.85rem', color: '#fca5a5', display: 'flex', alignItems: 'flex-start', gap: '8px', lineHeight: '1.4' }}>
+                    <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                    <div>
+                      <strong style={{ color: '#fff' }}>DANGER: SOFTWARE CUTOFF ACTIVE.</strong> Do not close the app or let your Mac sleep, or the valve will not shut off at the volume limit!
+                    </div>
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                 <button 
