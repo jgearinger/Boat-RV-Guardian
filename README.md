@@ -10,6 +10,7 @@ Get the native app for the best experience (required for Local API support). All
 [![Download Android APK](https://img.shields.io/badge/Download-Android_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest)
 [![Download macOS DMG](https://img.shields.io/badge/Download-macOS_DMG-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest)
 [![Download Windows EXE](https://img.shields.io/badge/Download-Windows_EXE-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/jgearinger/Boat-RV-Guardian/releases/latest)
+[![Launch Web App](https://img.shields.io/badge/Launch-Web_App-00F2FE?style=for-the-badge&logo=googlechrome&logoColor=black)](https://jgearinger.github.io/Boat-RV-Guardian/app/)
 
 ## 🌐 Website & Live Demo
 Read the full setup guide, see how the system works, and launch the live web dashboard (Simulator mode enabled) directly from our website:
