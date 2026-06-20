@@ -70,8 +70,8 @@
       <h2>Hardware Requirements</h2>
       <p>To use all features of the Guardian app, specific LinkTap hardware is required:</p>
       <ul>
-        <li><strong>LinkTap Gateway (G2S or newer):</strong> Required to support the necessary Local API endpoints and communication.</li>
-        <li><strong>TapLinker Valve:</strong> Must include a built-in flow meter. Older generations (like the G1) lack flow meters and cannot be used for volume-based auto-shutoffs.</li>
+        <li><strong>LinkTap Gateway (GW-01 or GW-02):</strong> Required to bridge your home Wi-Fi network to the LinkTap Valve and support the necessary Local API endpoints.</li>
+        <li><strong>LinkTap G2S Valve (TapLinker):</strong> Must be the G2S (or newer G1S/G4S) model because it includes a built-in flow meter. Older generations (like the G1) lack flow meters and cannot be used for volume-based auto-shutoffs.</li>
         <li><strong>Water Pressure Regulator:</strong> (Recommended) Always install a standard RV/Boat water pressure regulator <em>before</em> the LinkTap valve to protect the smart valve from high-pressure dock water.</li>
       </ul>
     </section>
@@ -81,13 +81,13 @@
       
       <div class="card">
         <h3>Physical Plumbing Layout</h3>
-        <p>This diagram illustrates the standard plumbing sequence. <strong>Crucially, the TapLinker valve must be installed right next to the city water spigot</strong> (the source), rather than at the RV/Boat inlet. This ensures that the entire length of your drinking water hose is protected and will be shut off if it bursts.</p>
+        <p>This diagram illustrates the standard plumbing sequence. <strong>Crucially, the LinkTap G2S valve must be installed right next to the city water spigot</strong> (the source), rather than at the RV/Boat inlet. This ensures that the entire length of your drinking water hose is protected and will be shut off if it bursts.</p>
         <img src="physical_layout.png" alt="Physical Layout Diagram" class="img-fluid" />
       </div>
 
       <div class="card">
         <h3>Logical Architecture</h3>
-        <p>This flowchart shows how the Guardian App communicates with your physical valve. By default, the app uses the LinkTap Cloud API for easy setup.</p>
+        <p>This flowchart shows how the Guardian App communicates with your physical valve. By default, the native app connects directly to the LinkTap Gateway over your Local Wi-Fi network, providing instant response times without relying on an active internet connection.</p>
         <img src="logical_layout.png" alt="Logical Architecture Diagram" class="img-fluid" />
       </div>
     </section>
@@ -99,7 +99,7 @@
         <h3>Step 1: LinkTap Hardware Setup</h3>
         <ol>
           <li>Follow the official LinkTap instructions to connect your <strong>Gateway</strong> to your home Wi-Fi network.</li>
-          <li>Insert batteries into the <strong>TapLinker Valve</strong> and pair it with the Gateway using the official LinkTap mobile app.</li>
+          <li>Insert batteries into the <strong>LinkTap G2S Valve</strong> and pair it with the Gateway using the official LinkTap mobile app.</li>
           <li>Verify that you can manually turn the water on and off using the official LinkTap app before proceeding.</li>
         </ol>
       </div>
@@ -113,7 +113,7 @@
           <li>Go to Gateway Details and enable the <strong>Local HTTP API</strong> toggle.</li>
           <li>Download the Boat & RV Guardian native app for your platform (see Downloads below).</li>
           <li>In the Guardian App settings, ensure API Mode is set to <strong>Local Network</strong> and enter your Gateway's local IP address (found in the LinkTap app).</li>
-          <li>Enter your <strong>Gateway ID</strong> and <strong>Taplinker ID</strong> (these are 16-character codes). Save the settings.</li>
+          <li>Enter your <strong>Gateway ID</strong> and <strong>Valve ID (Taplinker ID)</strong> (these are 16-character codes). Save the settings.</li>
         </ol>
       </div>
 
@@ -125,7 +125,7 @@
           <li>Click the <strong>Settings (⚙️)</strong> icon in the top right.</li>
           <li>Switch the API mode to <strong>Cloud API</strong>.</li>
           <li>Enter your LinkTap <strong>Cloud Username</strong> and your provided <strong>API Key</strong>.</li>
-          <li>Enter your <strong>Gateway ID</strong> and <strong>Taplinker ID</strong> and save the settings.</li>
+          <li>Enter your <strong>Gateway ID</strong> and <strong>Valve ID (Taplinker ID)</strong> and save the settings.</li>
         </ol>
       </div>
     </section>
