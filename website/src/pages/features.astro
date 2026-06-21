@@ -1,0 +1,221 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Features | Boat & RV Guardian">
+	<div class="page-header">
+		<div class="container">
+			<h1>Platform Features</h1>
+			<p>A comprehensive look at what makes the Guardian system the most reliable choice for your vessel or RV.</p>
+		</div>
+	</div>
+
+	<div class="container main-content">
+		
+		<!-- 1. Water Shutoff -->
+		<section class="feature-block">
+			<div class="content">
+				<div class="icon-badge">💧</div>
+				<h2>Intelligent Water Shutoff</h2>
+				<p>Never worry about coming back to a flooded cabin. The Guardian system integrates deeply with LinkTap smart water valves to provide unparalleled protection:</p>
+				<ul>
+					<li><strong>Real-time Flow Metering:</strong> See exactly how many liters/gallons are moving through your plumbing at any given second.</li>
+					<li><strong>Volume Limits:</strong> Set strict limits on water usage. If flow exceeds the limit (e.g., a busted pipe), the valve closes instantly.</li>
+					<li><strong>Remote Control:</strong> Open or close your main water line from anywhere in the world using our secure dashboard.</li>
+					<li><strong>Auto-Purge Cycles:</strong> Automatically cycle water periodically to keep your holding tanks fresh and prevent stagnant lines.</li>
+				</ul>
+			</div>
+			<div class="visual glass-card">
+				<div class="mockup-placeholder" style="background-image: url('/mobile-alert.png'); background-size: cover; background-position: center; min-height: 400px; border-radius: 8px;"></div>
+			</div>
+		</section>
+
+		<!-- 2. Cloud Alerts -->
+		<section class="feature-block row-reverse">
+			<div class="content">
+				<div class="icon-badge">🔔</div>
+				<h2>Mission-Critical Cloud Alerts</h2>
+				<p>We use a highly-available, serverless architecture to ensure your alerts are never missed, even if your vehicle loses power.</p>
+				<ul>
+					<li><strong>Direct Webhook Receivers:</strong> Your local sensors (like Shelly Floods) bypass fragile hubs and communicate directly with our edge network.</li>
+					<li><strong>Instant Push Notifications:</strong> Get alerted on your iOS or Android device the second a water leak or power failure is detected.</li>
+					<li><strong>Automated Emergency Actions:</strong> When the system receives a critical alert, it can automatically trigger the LinkTap valve to close over the cloud, minimizing damage while you're away.</li>
+					<li><strong>Custom Alert Rules:</strong> Configure which sensors trigger notifications, SMS, or automatic valve shutoffs based on your exact preferences.</li>
+				</ul>
+			</div>
+			<div class="visual glass-card">
+				<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">📡</div>
+				<h3 style="text-align: center; margin-top: 1rem;">Edge Network Routing</h3>
+				<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Powered by Cloudflare Workers for 99.99% uptime.</p>
+			</div>
+		</section>
+
+		<!-- 3. Power Monitoring -->
+		<section class="feature-block">
+			<div class="content">
+				<div class="icon-badge">⚡</div>
+				<h2>12V Battery & Environment Monitoring</h2>
+				<p>Modern RVs and Boats rely heavily on their 12V house systems. We provide deep insights into your power health so you never wake up to a dead battery.</p>
+				<ul>
+					<li><strong>Precision Voltage Tracking:</strong> Graph your 12V house and starter battery status over time to prevent damaging deep discharges.</li>
+					<li><strong>Shore Power Status:</strong> Know instantly if the marina or campsite loses power, protecting your fridge and climate systems.</li>
+					<li><strong>Temperature & Humidity:</strong> Monitor the climate inside your rig to prevent mold growth in the summer or freezing pipes in the winter.</li>
+					<li><strong>Solar Input Tracking:</strong> Track when your panels are charging the system and measure net gain against your daily usage.</li>
+				</ul>
+			</div>
+			<div class="visual glass-card">
+				<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">🔋</div>
+				<h3 style="text-align: center; margin-top: 1rem;">Sensor Aggregation</h3>
+				<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Integrates with Shelly Uni for granular telemetry.</p>
+			</div>
+		</section>
+
+		<!-- 4. Local First Architecture -->
+		<section class="feature-block row-reverse">
+			<div class="content">
+				<div class="icon-badge">🏠</div>
+				<h2>Local-First Architecture</h2>
+				<p>When you're off-grid, your smart systems shouldn't break down just because there's no cell service.</p>
+				<ul>
+					<li><strong>Zero-Latency Local API:</strong> When your device is on the same Wi-Fi network as your sensors, the dashboard communicates directly with them. No internet required.</li>
+					<li><strong>Privacy Focused:</strong> Your real-time data stays on your local network unless you explicitly enable cloud syncing.</li>
+					<li><strong>Cloud Fallback:</strong> The moment you leave the marina or campsite, the system seamlessly switches to cloud-polling mode so you maintain control from afar.</li>
+				</ul>
+			</div>
+			<div class="visual glass-card">
+				<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">🌐</div>
+				<h3 style="text-align: center; margin-top: 1rem;">Offline Capable</h3>
+				<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Full functionality, with or without Starlink.</p>
+			</div>
+		</section>
+
+		<!-- 5. Cross-Platform Native Apps -->
+		<section class="feature-block">
+			<div class="content">
+				<div class="icon-badge">📱</div>
+				<h2>Cross-Platform Native Experience</h2>
+				<p>We believe your dashboard should be accessible wherever you are, on whatever device you prefer.</p>
+				<ul>
+					<li><strong>Desktop Native (Tauri):</strong> Install a lightweight, blazing-fast app directly on your macOS or Windows machine. Perfect for the nav station.</li>
+					<li><strong>Mobile Native (Capacitor):</strong> A polished, responsive iOS and Android app that supports native push notifications and background syncing.</li>
+					<li><strong>Progressive Web App:</strong> Access your dashboard from any web browser without installing anything at all.</li>
+				</ul>
+			</div>
+			<div class="visual glass-card">
+				<div class="mockup-placeholder" style="background-image: url('/hero-dashboard.png'); background-size: cover; background-position: left; min-height: 400px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);"></div>
+			</div>
+		</section>
+
+	</div>
+</Layout>
+
+<style>
+	.page-header {
+		background: rgba(14, 165, 233, 0.05);
+		border-bottom: 1px solid var(--surface-border);
+		padding: 5rem 0;
+		margin-bottom: 4rem;
+		text-align: center;
+	}
+
+	.page-header h1 {
+		font-size: 3.5rem;
+		margin-bottom: 1rem;
+		color: #fff;
+	}
+
+	.page-header p {
+		font-size: 1.25rem;
+		color: var(--text-muted);
+		max-width: 700px;
+		margin: 0 auto;
+	}
+
+	.feature-block {
+		display: grid;
+		grid-template-columns: 1.2fr 1fr;
+		gap: 5rem;
+		align-items: center;
+		margin-bottom: 8rem;
+	}
+
+	.feature-block.row-reverse {
+		direction: rtl;
+	}
+
+	.feature-block.row-reverse > * {
+		direction: ltr;
+	}
+
+	.icon-badge {
+		font-size: 2.5rem;
+		margin-bottom: 1rem;
+		background: rgba(255,255,255,0.05);
+		width: 70px;
+		height: 70px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 16px;
+		border: 1px solid var(--surface-border);
+	}
+
+	.feature-block h2 {
+		font-size: 2.2rem;
+		margin-bottom: 1.5rem;
+		color: #fff;
+	}
+
+	.feature-block p {
+		font-size: 1.15rem;
+		color: var(--text-muted);
+		margin-bottom: 2rem;
+		line-height: 1.7;
+	}
+
+	.feature-block ul {
+		list-style: none;
+		padding: 0;
+	}
+
+	.feature-block ul li {
+		position: relative;
+		padding-left: 2rem;
+		margin-bottom: 1.2rem;
+		font-size: 1.05rem;
+		color: #e2e8f0;
+	}
+
+	.feature-block ul li::before {
+		content: "✓";
+		position: absolute;
+		left: 0;
+		color: var(--accent-color);
+		font-size: 1.2rem;
+		font-weight: bold;
+		line-height: 1.2;
+	}
+
+	.feature-block ul li strong {
+		color: #fff;
+	}
+
+	.visual {
+		min-height: 350px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		padding: 2rem;
+	}
+
+	@media (max-width: 992px) {
+		.feature-block {
+			grid-template-columns: 1fr;
+			gap: 3rem;
+			margin-bottom: 5rem;
+		}
+		.feature-block.row-reverse {
+			direction: ltr;
+		}
+	}
+</style>

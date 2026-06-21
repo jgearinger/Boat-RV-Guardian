@@ -1,0 +1,133 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Support & Docs | Boat & RV Guardian">
+	<div class="page-header">
+		<div class="container">
+			<h1>Support & Documentation</h1>
+			<p>Guides on setting up your DIY monitoring system from start to finish.</p>
+		</div>
+	</div>
+
+	<div class="container main-content">
+		
+		<div class="docs-grid">
+			<a href="https://github.com/jgearinger/Boat-RV-Guardian/blob/main/PHYSICAL_SETUP.md" class="glass-card doc-card" target="_blank" rel="noopener noreferrer">
+				<div class="icon">🔧</div>
+				<h3>Physical Setup Guide</h3>
+				<p>Learn how to physically install the LinkTap valve into your plumbing and place your Shelly sensors.</p>
+				<span class="read-more">Read Guide &rarr;</span>
+			</a>
+
+			<a href="https://github.com/jgearinger/Boat-RV-Guardian/blob/main/LOCAL_API_SETUP.md" class="glass-card doc-card" target="_blank" rel="noopener noreferrer">
+				<div class="icon">🌐</div>
+				<h3>Local API Setup</h3>
+				<p>Instructions on configuring your LinkTap gateway to allow local network requests without the internet.</p>
+				<span class="read-more">Read Guide &rarr;</span>
+			</a>
+
+			<a href="https://github.com/jgearinger/Boat-RV-Guardian/blob/main/PUSH_NOTIFICATIONS_SETUP.md" class="glass-card doc-card" target="_blank" rel="noopener noreferrer">
+				<div class="icon">🔔</div>
+				<h3>Push Notifications Setup</h3>
+				<p>How to configure Cloudflare Workers and Firebase to receive critical alerts on your mobile device.</p>
+				<span class="read-more">Read Guide &rarr;</span>
+			</a>
+			
+			<a href="https://github.com/jgearinger/Boat-RV-Guardian" class="glass-card doc-card" target="_blank" rel="noopener noreferrer">
+				<div class="icon">💻</div>
+				<h3>GitHub Repository</h3>
+				<p>View the source code, open issues, or contribute to the project.</p>
+				<span class="read-more">View Source &rarr;</span>
+			</a>
+		</div>
+
+		<section class="glass-card contact-section">
+			<h2>Need more help?</h2>
+			<p>Since this is a pro-bono, open-source project, the best way to get help is to open an issue on our GitHub repository. We actively monitor issues and try to help the community when possible.</p>
+			<a href="https://github.com/jgearinger/Boat-RV-Guardian/issues" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Open an Issue on GitHub</a>
+		</section>
+
+	</div>
+</Layout>
+
+<style>
+	.page-header {
+		background: rgba(14, 165, 233, 0.05);
+		border-bottom: 1px solid var(--surface-border);
+		padding: 4rem 0;
+		margin-bottom: 4rem;
+		text-align: center;
+	}
+
+	.page-header h1 {
+		font-size: 3rem;
+		margin-bottom: 1rem;
+		color: #fff;
+	}
+
+	.page-header p {
+		font-size: 1.2rem;
+		color: var(--text-muted);
+		max-width: 600px;
+		margin: 0 auto;
+	}
+
+	.docs-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+		gap: 2rem;
+		margin-bottom: 4rem;
+	}
+
+	.doc-card {
+		display: block;
+		text-decoration: none;
+		color: inherit;
+		transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+	}
+
+	.doc-card:hover {
+		transform: translateY(-5px);
+		border-color: var(--accent-color);
+		box-shadow: 0 10px 30px rgba(14, 165, 233, 0.15);
+	}
+
+	.doc-card .icon {
+		font-size: 2.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.doc-card h3 {
+		font-size: 1.25rem;
+		margin-bottom: 0.5rem;
+		color: #fff;
+	}
+
+	.doc-card p {
+		color: var(--text-muted);
+		margin-bottom: 1.5rem;
+		font-size: 0.95rem;
+	}
+
+	.read-more {
+		color: var(--accent-color);
+		font-weight: 600;
+		font-size: 0.9rem;
+	}
+
+	.contact-section {
+		text-align: center;
+		padding: 4rem 2rem;
+	}
+
+	.contact-section h2 {
+		margin-bottom: 1rem;
+	}
+
+	.contact-section p {
+		color: var(--text-muted);
+		max-width: 600px;
+		margin: 0 auto 2rem;
+	}
+</style>

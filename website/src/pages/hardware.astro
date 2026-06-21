@@ -1,0 +1,144 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Hardware Setup | Boat & RV Guardian">
+	<div class="page-header">
+		<div class="container">
+			<h1>Hardware Setup</h1>
+			<p>The Boat & RV Guardian software is open-source and free, but it requires specific third-party hardware to function.</p>
+		</div>
+	</div>
+
+	<div class="container main-content">
+		
+		<div class="hardware-grid">
+			<div class="glass-card">
+				<div class="card-header">
+					<h2>1. The LinkTap System</h2>
+					<span class="badge">Required</span>
+				</div>
+				<p>LinkTap provides the smart valve and wireless gateway needed to control your water flow.</p>
+				<ul>
+					<li><strong>Gateway:</strong> LinkTap GW-01 or GW-02. This connects to your RV/Boat router.</li>
+					<li><strong>Valve:</strong> LinkTap G2S (Must include the built-in flow meter for volume limits).</li>
+				</ul>
+				<p class="note"><strong>Why LinkTap?</strong> It offers a Local API. This means our dashboard can control the valve directly over your local Wi-Fi, without needing an internet connection. Essential for remote campsites.</p>
+			</div>
+
+			<div class="glass-card">
+				<div class="card-header">
+					<h2>2. Shelly Wi-Fi Sensors</h2>
+					<span class="badge">Required</span>
+				</div>
+				<p>Shelly provides reliable, locally-controllable sensors that don't force you into a proprietary cloud.</p>
+				<ul>
+					<li><strong>Leak Detection:</strong> Shelly Flood (Gen4 recommended). Place these under sinks and water heaters.</li>
+					<li><strong>12V Monitoring:</strong> Shelly Plus Uni. Connect this to your 12V house battery system to monitor voltage and control relays.</li>
+				</ul>
+				<p class="note"><strong>Why Shelly?</strong> They support sending custom HTTP Webhooks directly from the device, allowing us to route alerts to our Cloudflare workers instantly.</p>
+			</div>
+		</div>
+
+		<section class="architecture-diagram glass-card">
+			<h2>How it connects</h2>
+			<div class="diagram-placeholder">
+				<p><strong>Local Network (Boat/RV Router)</strong></p>
+				<p>📱 Your Phone/Laptop &harr; 📡 LinkTap Gateway &harr; 💧 Smart Valve</p>
+				<hr style="border-color: rgba(255,255,255,0.1); margin: 2rem 0;" />
+				<p><strong>Cloud Alerts (When you are away)</strong></p>
+				<p>🌊 Shelly Flood Sensor &rarr; ☁️ Cloudflare Worker &rarr; 🔔 Firebase Push Notification & 💧 LinkTap API Shutoff</p>
+			</div>
+		</section>
+
+	</div>
+</Layout>
+
+<style>
+	.page-header {
+		background: rgba(14, 165, 233, 0.05);
+		border-bottom: 1px solid var(--surface-border);
+		padding: 4rem 0;
+		margin-bottom: 4rem;
+		text-align: center;
+	}
+
+	.page-header h1 {
+		font-size: 3rem;
+		margin-bottom: 1rem;
+		color: #fff;
+	}
+
+	.page-header p {
+		font-size: 1.2rem;
+		color: var(--text-muted);
+		max-width: 600px;
+		margin: 0 auto;
+	}
+
+	.hardware-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 2rem;
+		margin-bottom: 4rem;
+	}
+
+	.card-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1.5rem;
+		border-bottom: 1px solid var(--surface-border);
+		padding-bottom: 1rem;
+	}
+
+	.card-header h2 {
+		margin: 0;
+		font-size: 1.5rem;
+	}
+
+	.badge {
+		background: rgba(16, 185, 129, 0.2);
+		color: var(--success-color);
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+		font-size: 0.8rem;
+		font-weight: bold;
+		text-transform: uppercase;
+	}
+
+	ul {
+		padding-left: 1.5rem;
+		margin-bottom: 1.5rem;
+	}
+
+	li {
+		margin-bottom: 0.5rem;
+	}
+
+	.note {
+		background: rgba(255, 255, 255, 0.05);
+		padding: 1rem;
+		border-left: 4px solid var(--accent-color);
+		border-radius: 0 4px 4px 0;
+		font-size: 0.95rem;
+	}
+
+	.architecture-diagram {
+		text-align: center;
+		padding: 4rem 2rem;
+	}
+
+	.diagram-placeholder {
+		margin-top: 2rem;
+		font-family: monospace;
+		font-size: 1.1rem;
+		line-height: 2;
+	}
+
+	@media (max-width: 768px) {
+		.hardware-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

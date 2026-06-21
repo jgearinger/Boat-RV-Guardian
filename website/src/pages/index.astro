@@ -1,0 +1,406 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Boat & RV Guardian | Premium Smart Monitoring">
+	<!-- Hero Section -->
+	<section class="hero">
+		<div class="hero-bg-glow"></div>
+		<div class="container hero-container">
+			<div class="hero-content">
+				<h1 class="hero-title">Protect Your Vessel & Vehicle with <span class="text-gradient">Guardian</span></h1>
+				<p class="hero-subtitle">
+					Convert standard smart-home hardware into an ultra-reliable water safety, power monitoring, and auto-shutoff system. Designed specifically for the unique challenges of Boats and RVs.
+				</p>
+				<div class="hero-actions">
+					<a href="/features" class="btn btn-primary">Explore Features</a>
+					<a href="/hardware" class="btn btn-outline">View Hardware Setup</a>
+				</div>
+			</div>
+			<div class="hero-image-wrapper">
+				<img src="/hero-dashboard.png" alt="Boat & RV Guardian Dashboard Interface" class="hero-image" />
+				<div class="glass-float float-1">
+					<div class="float-icon">💧</div>
+					<div>
+						<strong>Leak Detected</strong>
+						<span class="status-alert">Valve Closed</span>
+					</div>
+				</div>
+				<div class="glass-float float-2">
+					<div class="float-icon">⚡</div>
+					<div>
+						<strong>House Battery</strong>
+						<span class="status-ok">13.2V - Charging</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<!-- Features Grid -->
+	<section class="features-section container">
+		<div class="section-header">
+			<h2>Total Command of Your Systems</h2>
+			<p>We bridge the gap between reliable local networking and cloud accessibility, ensuring you always know what's happening aboard.</p>
+		</div>
+
+		<div class="features-grid">
+			<div class="glass-card feature-card">
+				<div class="feature-icon">🌊</div>
+				<h3>Smart Water Shutoff</h3>
+				<p>Integration with LinkTap smart valves provides real-time flow metering and instant emergency shutoffs to prevent catastrophic floods.</p>
+			</div>
+			<div class="glass-card feature-card">
+				<div class="feature-icon">📡</div>
+				<h3>Instant Cloud Alerts</h3>
+				<p>Using Shelly sensors and Cloudflare Workers, our webhook receiver guarantees you get a push notification the second water is detected.</p>
+			</div>
+			<div class="glass-card feature-card">
+				<div class="feature-icon">🔋</div>
+				<h3>12V Power Monitoring</h3>
+				<p>Keep a constant eye on your house batteries and shore power status using custom hardware integrations like the Shelly Uni.</p>
+			</div>
+			<div class="glass-card feature-card">
+				<div class="feature-icon">📱</div>
+				<h3>Cross-Platform Ready</h3>
+				<p>A single, unified React dashboard available as a Web App, a native macOS/Windows Desktop App via Tauri, and Mobile App.</p>
+			</div>
+		</div>
+	</section>
+
+	<!-- How It Works Section -->
+	<section class="how-it-works">
+		<div class="container row-reverse-layout">
+			<div class="content-side">
+				<h2>The Hardware Ecosystem</h2>
+				<p>Boat & RV Guardian isn't just software; it's an orchestration of the best off-the-shelf smart hardware. We securely link Shelly Wi-Fi sensors to LinkTap gateways without relying on fragile third-party integrations.</p>
+				<ul class="benefit-list">
+					<li><strong>Free during beta, low-cost after:</strong> Enjoy the software for free during our beta phase, followed by a sustainable low-cost model.</li>
+					<li><strong>Local API Mode:</strong> When you're onboard, the app communicates directly with your gateway for zero-latency control.</li>
+					<li><strong>Cloud Fallback:</strong> When you leave the marina or campsite, cloud polling takes over seamlessly.</li>
+				</ul>
+				<a href="/hardware" class="btn btn-outline" style="margin-top: 1rem;">See Required Hardware &rarr;</a>
+			</div>
+			<div class="image-side">
+				<img src="/smart-hardware.png" alt="Smart Hardware Connection Abstract" class="feature-image" />
+			</div>
+		</div>
+	</section>
+
+	<!-- CTA Section -->
+	<section class="cta-section container">
+		<div class="glass-card cta-card">
+			<div class="cta-content">
+				<h2>Ready to secure your rig?</h2>
+				<p>Join the open-source community building better tools for digital nomads and mariners.</p>
+			</div>
+			<div class="cta-actions">
+				<a href="https://github.com/jgearinger/Boat-RV-Guardian" class="btn btn-primary">View on GitHub</a>
+				<a href="/pricing" class="btn btn-outline">Read the Pro-Bono Model</a>
+			</div>
+		</div>
+	</section>
+</Layout>
+
+<style>
+	/* Hero Section */
+	.hero {
+		position: relative;
+		padding: 6rem 0 4rem;
+		overflow: hidden;
+	}
+
+	.hero-bg-glow {
+		position: absolute;
+		top: -20%;
+		left: 50%;
+		transform: translateX(-50%);
+		width: 800px;
+		height: 800px;
+		background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(11, 15, 25, 0) 70%);
+		z-index: -1;
+		border-radius: 50%;
+	}
+
+	.hero-container {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4rem;
+		align-items: center;
+	}
+
+	.badge {
+		display: inline-block;
+		padding: 0.4rem 1rem;
+		background: rgba(14, 165, 233, 0.1);
+		border: 1px solid rgba(14, 165, 233, 0.3);
+		color: var(--accent-color);
+		border-radius: 20px;
+		font-size: 0.85rem;
+		font-weight: 600;
+		margin-bottom: 1.5rem;
+		letter-spacing: 0.5px;
+		text-transform: uppercase;
+	}
+
+	.hero-title {
+		font-size: 4rem;
+		line-height: 1.1;
+		margin-bottom: 1.5rem;
+	}
+
+	.hero-subtitle {
+		font-size: 1.15rem;
+		color: var(--text-muted);
+		margin-bottom: 2.5rem;
+		max-width: 90%;
+	}
+
+	.hero-actions {
+		display: flex;
+		gap: 1rem;
+	}
+
+	.hero-image-wrapper {
+		position: relative;
+		perspective: 1000px;
+	}
+
+	.hero-image {
+		width: 100%;
+		height: auto;
+		border-radius: 12px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+		transform: rotateY(-5deg) rotateX(5deg);
+		transition: transform 0.5s ease;
+		border: 1px solid var(--surface-border);
+	}
+
+	.hero-image-wrapper:hover .hero-image {
+		transform: rotateY(0) rotateX(0);
+	}
+
+	.glass-float {
+		position: absolute;
+		background: rgba(11, 15, 25, 0.6);
+		backdrop-filter: blur(12px);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		padding: 0.8rem 1.2rem;
+		border-radius: 12px;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+		animation: float 6s ease-in-out infinite;
+	}
+
+	.float-1 {
+		top: 15%;
+		left: -10%;
+		animation-delay: 0s;
+	}
+
+	.float-2 {
+		bottom: 15%;
+		right: -10%;
+		animation-delay: 2s;
+	}
+
+	.float-icon {
+		font-size: 1.5rem;
+	}
+
+	.glass-float strong {
+		display: block;
+		font-size: 0.9rem;
+		font-family: var(--font-heading);
+	}
+
+	.glass-float span {
+		font-size: 0.8rem;
+	}
+
+	.status-alert { color: var(--danger-color); }
+	.status-ok { color: var(--success-color); }
+
+	@keyframes float {
+		0% { transform: translateY(0px); }
+		50% { transform: translateY(-15px); }
+		100% { transform: translateY(0px); }
+	}
+
+	/* Features Section */
+	.features-section {
+		padding: 6rem 2rem;
+	}
+
+	.section-header {
+		text-align: center;
+		max-width: 700px;
+		margin: 0 auto 4rem;
+	}
+
+	.section-header h2 {
+		font-size: 2.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.features-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		gap: 2rem;
+	}
+
+	.feature-card {
+		padding: 2.5rem 2rem;
+	}
+
+	.feature-icon {
+		font-size: 2.5rem;
+		margin-bottom: 1.5rem;
+		background: var(--surface-color);
+		width: 60px;
+		height: 60px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 12px;
+		border: 1px solid var(--surface-border);
+	}
+
+	.feature-card h3 {
+		font-size: 1.25rem;
+		margin-bottom: 1rem;
+	}
+
+	.feature-card p {
+		color: var(--text-muted);
+		font-size: 0.95rem;
+	}
+
+	/* How It Works Layouts */
+	.how-it-works {
+		background: rgba(255, 255, 255, 0.02);
+		padding: 6rem 0;
+		border-top: 1px solid var(--surface-border);
+		border-bottom: 1px solid var(--surface-border);
+	}
+
+	.row-reverse-layout {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4rem;
+		align-items: center;
+	}
+
+	.content-side h2 {
+		font-size: 2.5rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.content-side p {
+		color: var(--text-muted);
+		font-size: 1.1rem;
+		margin-bottom: 2rem;
+	}
+
+	.benefit-list {
+		list-style: none;
+		padding: 0;
+		margin: 0 0 2rem 0;
+	}
+
+	.benefit-list li {
+		position: relative;
+		padding-left: 2rem;
+		margin-bottom: 1rem;
+		color: var(--text-main);
+	}
+
+	.benefit-list li::before {
+		content: "✓";
+		position: absolute;
+		left: 0;
+		color: var(--accent-color);
+		font-weight: bold;
+	}
+
+	.benefit-list strong {
+		color: #ffffff;
+	}
+
+	.feature-image {
+		width: 100%;
+		border-radius: 12px;
+		border: 1px solid var(--surface-border);
+		box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+	}
+
+	/* CTA Section */
+	.cta-section {
+		padding: 6rem 2rem;
+	}
+
+	.cta-card {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(139, 92, 246, 0.1));
+		border-color: rgba(14, 165, 233, 0.3);
+		padding: 4rem;
+	}
+
+	.cta-content h2 {
+		font-size: 2rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.cta-content p {
+		color: var(--text-muted);
+		font-size: 1.1rem;
+	}
+
+	.cta-actions {
+		display: flex;
+		gap: 1rem;
+	}
+
+	@media (max-width: 992px) {
+		.hero-container, .row-reverse-layout {
+			grid-template-columns: 1fr;
+			text-align: center;
+		}
+		
+		.hero-subtitle {
+			margin: 0 auto 2.5rem;
+		}
+		
+		.hero-actions {
+			justify-content: center;
+		}
+		
+		.glass-float {
+			display: none; /* Hide floating elements on mobile for cleaner look */
+		}
+		
+		.cta-card {
+			flex-direction: column;
+			text-align: center;
+			gap: 2rem;
+			padding: 2rem;
+		}
+		
+		.benefit-list li {
+			text-align: left;
+		}
+	}
+
+	@media (max-width: 600px) {
+		.hero-title {
+			font-size: 2.5rem;
+		}
+		.hero-actions {
+			flex-direction: column;
+		}
+	}
+</style>
