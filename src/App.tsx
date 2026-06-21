@@ -1792,7 +1792,19 @@ export default function App() {
                   <>
                     {/* Cloud Controller Configuration */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>☁️ Cloud Controller Configuration</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-cyan)', margin: 0 }}>☁️ Cloud Controller Configuration</h4>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            className={isCloudPollingActive ? "btn-secondary" : "btn-primary"}
+                            onClick={() => setIsCloudPollingActive(!isCloudPollingActive)}
+                            style={{ padding: '4px 12px', fontSize: '0.75rem', fontWeight: 700, opacity: isCloudPollingActive ? 0.7 : 1 }}
+                          >
+                            {isCloudPollingActive ? '✓ Connected' : 'Connect'}
+                          </button>
+                          <button className="btn-secondary" onClick={() => setManualRefresh(Date.now())} style={{ padding: '4px 12px', fontSize: '0.75rem' }}>↻ Refresh</button>
+                        </div>
+                      </div>
                       <div><label className="form-label">Cloud Username</label><input type="text" className="form-input" value={cloudUsername} onChange={(e) => { setCloudUsername(e.target.value); setIsCloudPollingActive(false); }} placeholder="App Username" /></div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <label className="form-label" style={{ marginBottom: 0 }}>Cloud API Key</label>
@@ -1801,33 +1813,27 @@ export default function App() {
                           ℹ️ <strong>How to get your API Key:</strong> Log into the <a href="https://www.link-tap.com/#!/api-for-developers" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>LinkTap Web Portal</a> on a computer, go to <strong>Settings</strong>, and generate your API Key.
                         </div>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', marginTop: '4px' }}>
-                        <button 
-                          className={isCloudPollingActive ? "btn-secondary" : "btn-primary"}
-                          onClick={() => setIsCloudPollingActive(!isCloudPollingActive)}
-                          style={{ padding: '10px', fontWeight: 700, opacity: isCloudPollingActive ? 0.7 : 1 }}
-                        >
-                          {isCloudPollingActive ? '✓ Cloud Active (Click to Disconnect)' : 'Connect Cloud'}
-                        </button>
-                        <button className="btn-secondary" onClick={() => setManualRefresh(Date.now())} style={{ padding: '10px' }}>↻ Refresh</button>
-                      </div>
+
                     </div>
 
                     {/* Local Controller Configuration */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-emerald)' }}>🏠 Local Controller Configuration</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-emerald)', margin: 0 }}>🏠 Local Controller Configuration</h4>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            className={isLocalPollingActive ? "btn-secondary" : "btn-primary"}
+                            onClick={() => setIsLocalPollingActive(!isLocalPollingActive)}
+                            style={{ padding: '4px 12px', fontSize: '0.75rem', fontWeight: 700, opacity: isLocalPollingActive ? 0.7 : 1, background: isLocalPollingActive ? '' : 'var(--accent-emerald)' }}
+                          >
+                            {isLocalPollingActive ? '✓ Connected' : 'Connect'}
+                          </button>
+                          <button className="btn-secondary" onClick={() => setManualRefresh(Date.now())} style={{ padding: '4px 12px', fontSize: '0.75rem' }}>↻ Refresh</button>
+                        </div>
+                      </div>
                       <div><label className="form-label">Gateway Local IP Address</label><input type="text" className="form-input" value={gatewayIp} onChange={(e) => { setGatewayIp(e.target.value); setIsLocalPollingActive(false); }} placeholder="e.g. 192.168.1.100" /></div>
                       
-                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px', marginTop: '4px' }}>
-                        <button 
-                          className={isLocalPollingActive ? "btn-secondary" : "btn-primary"}
-                          onClick={() => setIsLocalPollingActive(!isLocalPollingActive)}
-                          style={{ padding: '10px', fontWeight: 700, opacity: isLocalPollingActive ? 0.7 : 1, background: isLocalPollingActive ? '' : 'var(--accent-emerald)' }}
-                        >
-                          {isLocalPollingActive ? '✓ Local Active (Click to Disconnect)' : 'Connect Local'}
-                        </button>
-                        <button className="btn-secondary" onClick={() => setManualRefresh(Date.now())} style={{ padding: '10px' }}>↻ Refresh</button>
-                      </div>
+
                     </div>
                   </>
                 )}
