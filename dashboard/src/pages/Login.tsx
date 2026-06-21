@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from '../services/firebase';
+import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithCredential } from '../services/firebase';
+import { open } from '@tauri-apps/plugin-shell';
+import { start, onUrl, cancel } from '@fabianlars/tauri-plugin-oauth';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -30,11 +32,74 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      // Check if we are running inside the Tauri native app
+      if ((window as any).__TAURI_INTERNALS__) {
+        // Clean up any dangling server from a previously aborted flow
+        try {
+          await cancel(14205);
+        } catch (e) {
+          // ignore if it fails to cancel (wasn't running)
+        }
+
+        // Start local OAuth server
+        const port = await start({ ports: [14205], response: 'Authentication successful! You can close this tab and return to the app.' });
+        
+        let unlisten: () => void;
+        unlisten = await onUrl(async (url) => {
+          if (unlisten) unlisten();
+          try {
+            await cancel(port);
+          } catch (e) {
+            // Server already shut down automatically upon receiving the URL
+          }
+          
+          try {
+            const hashMatch = url.match(/#(.+)/);
+            if (hashMatch) {
+              const params = new URLSearchParams(hashMatch[1]);
+              const idToken = params.get('id_token');
+              
+              if (idToken) {
+                const credential = GoogleAuthProvider.credential(idToken);
+                await signInWithCredential(auth, credential);
+                setLoading(false);
+                return;
+              } else {
+                // If it came back with an error from Google
+                const errorParam = params.get('error') || new URLSearchParams(url.split('?')[1]).get('error');
+                if (errorParam) {
+                   setError(`Google returned an error: ${errorParam}`);
+                   setLoading(false);
+                   return;
+                }
+              }
+            }
+            
+            setError('Failed to extract Google login token. URL was: ' + url.substring(0, 50) + '...');
+          } catch (cbErr: any) {
+            console.error('Callback error:', cbErr);
+            setError(cbErr.message || 'Error signing into Firebase with Google token.');
+          } finally {
+            setLoading(false);
+          }
+        });
+
+        // Open system default browser
+        const clientId = '974787072340-6f8m5lu120avq3j1o2pgipqeh7fnsd3r.apps.googleusercontent.com';
+        const redirectUri = `http://127.0.0.1:${port}/`;
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=id_token&scope=email%20profile%20openid&nonce=12345`;
+        
+        await open(authUrl);
+      } else {
+        // Running in a standard web browser, use standard popup
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+        setLoading(false);
+      }
     } catch (err: any) {
-      setError(err.message || 'Google authentication failed');
-    } finally {
+      console.error('OAuth Error:', err);
+      const errMsg = typeof err === 'string' ? err : (err?.message || 'Google authentication failed');
+      setError(errMsg);
       setLoading(false);
     }
   };
