@@ -1,4 +1,3 @@
-import React from 'react';
 
 interface HomeProps {
   onNavigate: (view: 'fresh_water' | 'high_water' | 'batteries' | 'shore_power') => void;

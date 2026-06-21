@@ -33,7 +33,6 @@ export default function Settings({ user }: { user: any }) {
   }, [vesselNickname, unitSystem, timeZone, normalRunHours, normalRunMinutes, normalRunDaily, normalRunVolume, autoRestartNormal]);
 
   const volUnit = unitSystem === 'imperial' ? 'Gallons' : 'Liters';
-  const speedUnit = unitSystem === 'imperial' ? 'GPM' : 'L/min';
 
   return (
     <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', color: '#fff', paddingBottom: '100px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
