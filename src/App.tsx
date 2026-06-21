@@ -144,14 +144,14 @@ export default function App() {
   const [activeAlarmSound, setActiveAlarmSound] = useState<string | null>(null);
   
   const [notifyAutoGuard, setNotifyAutoGuard] = useState(() => localStorage.getItem('lt_notif_autoguard') !== 'false');
-  const [notifyFall, setNotifyFall] = useState(() => localStorage.getItem('lt_notif_fall') !== 'false');
+
   const [notifyLowBattery, setNotifyLowBattery] = useState(() => localStorage.getItem('lt_notif_battery') === 'true');
   const [notifyWatering, setNotifyWatering] = useState(() => localStorage.getItem('lt_notif_watering') === 'true');
   const hasNotifiedBattery = useRef(false);
 
   // --- Real-time API States (matched to G2S Gateway Schema) ---
   const [isRfLinked, setIsRfLinked] = useState(true);
-    const [isFall, setIsFall] = useState(false);
+
   const [isBroken, setIsBroken] = useState(false);
     const [isLeak, setIsLeak] = useState(false);
   const [isClog, setIsClog] = useState(false);
@@ -308,7 +308,7 @@ export default function App() {
     localStorage.setItem('lt_maxflow', maxFlowRate.toString());
     
     localStorage.setItem('lt_notif_autoguard', notifyAutoGuard.toString());
-    localStorage.setItem('lt_notif_fall', notifyFall.toString());
+
     localStorage.setItem('lt_notif_battery', notifyLowBattery.toString());
     localStorage.setItem('lt_notif_watering', notifyWatering.toString());
   }, [
@@ -317,7 +317,7 @@ export default function App() {
     inputDuration, inputVolume, delayedStartMins, delayedStartSecs, washDownDuration,
     normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
     targetDuration, targetVolume, isCloudPollingActive, isLocalPollingActive, notificationsEnabled, alarmSound,
-    alarmVolume, alarmRepeatInterval, notifyAutoGuard, notifyFall, notifyLowBattery, notifyWatering
+    alarmVolume, alarmRepeatInterval, notifyAutoGuard, notifyLowBattery, notifyWatering
   ]);
 
   useEffect(() => {
@@ -482,12 +482,6 @@ export default function App() {
       }
     }
   }, [speed, isBroken, isLeak, isWatering, autoGuardEnabled, maxFlowRate, displaySpeed, speedUnit]);
-
-  useEffect(() => {
-    if (isFall && autoGuardEnabled && notifyFall) {
-      triggerAlert('Tamper/Fall Detected', 'The device has reported a physical tamper or fall anomaly!');
-    }
-  }, [isFall, autoGuardEnabled, notifyFall]);
 
   useEffect(() => {
     if (alertOffline && !isRfLinked && autoGuardEnabled) {
@@ -659,7 +653,6 @@ export default function App() {
                volume: st.vol || st.volume || 0,
                target_volume: st.limit || st.target_vol || (st.watering ? st.watering.vol : 0) || 0,
                target_duration: st.totalDuration || st.total || (st.watering ? st.watering.duration : 0) || 0,
-               is_fall: false,
                is_broken: false,
                remain_duration: st.remain_duration || st.remainingSeconds || st.remaining || 
                                 (st.total != null && st.onDuration != null ? ((Number(st.total) * 60 + Number(st.totalSec || 0)) - (Number(st.onDuration) * 60 + Number(st.onDurSec || 0))) : 0) ||
@@ -724,7 +717,7 @@ export default function App() {
         }
 
         setIsRfLinked(data.is_rf_linked ?? true);
-        setIsFall(data.is_fall ?? false);
+
         setIsBroken(data.is_broken ?? false);
         setIsLeak(data.is_leak ?? false);
         setIsClog(data.is_clog ?? false);
@@ -1131,7 +1124,7 @@ export default function App() {
   const clearAlarms = () => {
     setIsBroken(false);
     setIsLeak(false);
-    setIsFall(false);
+
     setIsClog(false);
     setBattery(95);
     addLog('success', '✅ All mock alarms cleared and safety status reset.');
@@ -1256,7 +1249,7 @@ export default function App() {
           )}
 
           {/* Alarm Banner if leak/burst is active */}
-          {(isBroken || isLeak || isFall || displaySpeed > maxFlowRate) && (
+          {(isBroken || isLeak || displaySpeed > maxFlowRate) && (
             <div className="glass-card danger" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
@@ -1277,7 +1270,7 @@ export default function App() {
                     {isBroken && '🚨 PIPE BREAK ALARM: Critical rupture flagged by flow sensor.'}
                     {!isBroken && displaySpeed > maxFlowRate && `🚨 EXPENDITURE LIMIT: Flow rate (${displaySpeed.toFixed(1)} ${speedUnit}) exceeds local safety threshold (${maxFlowRate} ${speedUnit}).`}
                     {isLeak && !isBroken && '⚠️ LEAK ALERT: Small trickle flow detected without schedule.'}
-                    {isFall && '⚠️ HARDWARE ALARM: TapLinker physical tamper, fall, or impact detected.'}
+
                   </p>
                 </div>
               </div>
@@ -1333,10 +1326,10 @@ export default function App() {
                 </div>
                 <div style={{ borderLeft: '3px solid var(--accent-emerald)', paddingLeft: '12px' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Device Mounting</span>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: (!isFall && !isClog && !isBroken) ? 'inherit' : 'var(--accent-red)' }}>
-                    {!isFall && !isClog && !isBroken ? 'Secure' : 'ALERT'}
+                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: (!isClog && !isBroken) ? 'inherit' : 'var(--accent-red)' }}>
+                    {!isClog && !isBroken ? 'Secure' : 'ALERT'}
                   </div>
-                  {(isFall || isClog || isBroken || isLeak) && (
+                  {(isClog || isBroken || isLeak) && (
                     <button 
                       onClick={() => {
                         clearAlarms();
@@ -1706,10 +1699,6 @@ export default function App() {
                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                      <input type="checkbox" checked={notifyAutoGuard} onChange={(e) => setNotifyAutoGuard(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Auto-Guard Triggers</span>
-                   </div>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                     <input type="checkbox" checked={notifyFall} onChange={(e) => setNotifyFall(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
-                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Tamper/Fall Alerts</span>
                    </div>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                      <input type="checkbox" checked={alertOffline} onChange={(e) => setAlertOffline(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-orange)' }} />
