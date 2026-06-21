@@ -164,6 +164,22 @@ export default function Settings({ user }: { user: any }) {
           >
             {cloudSaving ? 'Saving to Firebase...' : (!user ? 'Login Required to Save' : 'Save Config to Cloud')}
           </button>
+          
+          {user && (
+            <div style={{ marginTop: '16px', padding: '12px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
+              <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent-cyan)' }}>Shelly Sensor Webhook URL</h4>
+              <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Paste this URL into your Shelly sensor's "Action" configuration to trigger an autonomous Link-Tap shutoff when high-water is detected.</p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  readOnly 
+                  value={`https://boat-rv-guardian-webhooks.jgearinger.workers.dev/?uid=${user.uid}`}
+                  style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
