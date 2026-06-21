@@ -44,6 +44,29 @@ jobs:
           releaseDraft: false
           prerelease: false
 
+      - name: Upload macOS DMG to Cloudflare R2
+        if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_EDIT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: ./dashboard
+        run: |
+          npm i -g wrangler
+          DMG_FILE=$(find src-tauri/target/release/bundle/dmg -name "*.dmg" | head -n 1)
+          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.dmg "$DMG_FILE"
+
+      - name: Upload Windows EXE to Cloudflare R2
+        if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_EDIT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: ./dashboard
+        shell: bash
+        run: |
+          npm i -g wrangler
+          EXE_FILE=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -n 1)
+          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.exe "$EXE_FILE"
+
   release-android:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -109,3 +132,12 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           files: boat-rv-guardian-release.apk
+
+      - name: Upload Android APK to Cloudflare R2
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_EDIT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm i -g wrangler
+          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.apk boat-rv-guardian-release.apk
