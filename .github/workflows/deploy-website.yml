@@ -35,7 +35,7 @@ jobs:
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_EDIT }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: boat-rv-guardian
           directory: ./website/dist
