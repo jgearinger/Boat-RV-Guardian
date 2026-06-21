@@ -148,23 +148,13 @@ export default function App() {
     const handleSettingsUpdate = () => {
       setUnitSystem(localStorage.getItem('lt_unit') as 'metric' | 'imperial' || 'imperial');
       setTimeZone(localStorage.getItem('lt_tz') || ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'));
-      setResetTime(localStorage.getItem('lt_reset_time') || '12:00');
-      setNotificationsEnabled(localStorage.getItem('lt_notifications') === 'true');
-      setAlarmSound((localStorage.getItem('lt_alarm_sound') as any) || 'beep');
-      setAlarmVolume(Number(localStorage.getItem('lt_alarm_vol') || '1.0'));
-      setAlarmRepeatInterval((localStorage.getItem('lt_alarm_interval') as any) || '15');
-      setAutoGuardEnabled(localStorage.getItem('lt_auto_guard') !== 'false');
-      setNotifyAutoGuard(localStorage.getItem('lt_notify_ag') !== 'false');
-      setAlertOffline(localStorage.getItem('lt_notify_offline') !== 'false');
-      setNotifyLowBattery(localStorage.getItem('lt_notify_batt') !== 'false');
-      setNotifyWatering(localStorage.getItem('lt_notify_water') === 'true');
+      
+      // Normal Run Profile (Global Settings)
       setNormalRunHours(Number(localStorage.getItem('lt_nr_hrs') || '0'));
       setNormalRunMinutes(Number(localStorage.getItem('lt_nr_mins') || '0'));
       setNormalRunDaily(localStorage.getItem('lt_nr_daily') === 'true');
       setNormalRunVolume(Number(localStorage.getItem('lt_nr_vol') || '10'));
       setAutoRestartNormal(localStorage.getItem('lt_nr_auto') === 'true');
-      setMaxFlowRate(Number(localStorage.getItem('lt_max_flow') || '15'));
-      setMaxDuration(Number(localStorage.getItem('lt_max_dur') || '30'));
     };
     
     const handleTestAlert = () => triggerAlert('Test Alert', 'This is a test of the Boat & RV Guardian alert system.');

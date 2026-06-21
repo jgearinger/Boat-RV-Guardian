@@ -36,7 +36,7 @@ jobs:
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_PAGES_EDIT }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          accountId: 9b75e814c0fc254c910fd1afc3c88028
           projectName: boat-rv-guardian
           directory: ./website/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
