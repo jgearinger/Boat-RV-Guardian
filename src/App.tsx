@@ -1324,23 +1324,22 @@ export default function App() {
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Signal Stability</span>
                   <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{isRfLinked ? 'LINK OK' : 'LINK STUCK'}</div>
                 </div>
-                <div style={{ borderLeft: '3px solid var(--accent-emerald)', paddingLeft: '12px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Device Mounting</span>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: (!isClog && !isBroken) ? 'inherit' : 'var(--accent-red)' }}>
-                    {!isClog && !isBroken ? 'Secure' : 'ALERT'}
+                {(isClog || isBroken || isLeak) && (
+                  <div style={{ borderLeft: '3px solid var(--accent-red)', paddingLeft: '12px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>System Alarms</span>
+                    <div style={{ marginTop: '4px' }}>
+                      <button 
+                        onClick={() => {
+                          clearAlarms();
+                          setActiveAlarmSound(null);
+                        }} 
+                        style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', padding: '4px 12px', borderRadius: '4px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        Acknowledge & Reset
+                      </button>
+                    </div>
                   </div>
-                  {(isClog || isBroken || isLeak) && (
-                    <button 
-                      onClick={() => {
-                        clearAlarms();
-                        setActiveAlarmSound(null);
-                      }} 
-                      style={{ marginTop: '4px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer' }}
-                    >
-                      Acknowledge & Reset
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>
