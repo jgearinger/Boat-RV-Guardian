@@ -117,6 +117,11 @@ export default function App() {
       if (config.linktap.apiKey) setCloudApiKey(config.linktap.apiKey);
       if (config.linktap.gatewayId) setGatewayId(config.linktap.gatewayId);
       if (config.linktap.taplinkerId) setDeviceId(config.linktap.taplinkerId);
+      
+      if (config.linktap.username && config.linktap.apiKey) {
+        setIsCloudPollingActive(true);
+        setMockMode(false);
+      }
     }
   }, [config?.linktap]);
 

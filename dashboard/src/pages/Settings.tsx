@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { auth, signOut } from '../services/firebase';
 import Login from './Login';
-import { useCloudConfig, LinkTapConfig } from '../hooks/useCloudConfig';
+import { useCloudConfig, type LinkTapConfig } from '../hooks/useCloudConfig';
 
 const APP_VERSION = '1.0.27';
 
