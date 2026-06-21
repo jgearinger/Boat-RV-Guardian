@@ -9,7 +9,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name boat-rv-guardian"
   },
   "dependencies": {
     "astro": "^6.4.7"

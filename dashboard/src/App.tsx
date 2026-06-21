@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
 import Sensors from './pages/Sensors';
-import Login from './pages/Login';
+import Settings from './pages/Settings';
 import { usePushNotifications } from './hooks/usePushNotifications';
-import { auth, onAuthStateChanged, signOut } from './services/firebase';
+import { auth, onAuthStateChanged } from './services/firebase';
 
-type AppView = 'fresh_water' | 'high_water' | 'batteries' | 'shore_power';
+type AppView = 'fresh_water' | 'high_water' | 'batteries' | 'shore_power' | 'settings';
 
 export default function App() {
   usePushNotifications();
@@ -23,10 +23,6 @@ export default function App() {
 
   if (loading) {
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: 'var(--accent)' }}>Loading...</div>;
-  }
-
-  if (!user) {
-    return <Login />;
   }
 
   return (
@@ -61,11 +57,11 @@ export default function App() {
           Shore Power
         </button>
         <button 
-          className="btn-secondary"
-          onClick={() => signOut(auth)}
-          style={{ padding: '8px 16px', fontSize: '0.9rem', boxShadow: 'none', marginLeft: 'auto', border: '1px solid #ef4444', color: '#ef4444' }}
+          className={currentView === 'settings' ? 'btn-primary' : 'btn-secondary'} 
+          onClick={() => setCurrentView('settings')}
+          style={{ padding: '8px 16px', fontSize: '0.9rem', boxShadow: 'none', marginLeft: 'auto' }}
         >
-          Sign Out
+          ⚙️ Settings
         </button>
       </nav>
 
@@ -76,6 +72,7 @@ export default function App() {
         {currentView === 'high_water' && <Sensors category="flood" />}
         {currentView === 'batteries' && <Sensors category="batteries" />}
         {currentView === 'shore_power' && <Sensors category="shore_power" />}
+        {currentView === 'settings' && <Settings user={user} />}
       </div>
     </div>
   );
