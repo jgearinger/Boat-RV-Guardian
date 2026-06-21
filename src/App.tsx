@@ -1216,7 +1216,7 @@ export default function App() {
                 <path d="M8.58 16.14a7 7 0 0 1 6.83 0"></path>
                 <line x1="12" y1="20" x2="12.01" y2="20"></line>
               </svg>
-              <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{isRfLinked ? `${signal}%` : 'LINK LOST'}</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{isRfLinked ? `LINK OK (${signal}%)` : 'LINK STUCK'}</span>
             </div>
 
             {/* Connection badge */}
@@ -1329,10 +1329,7 @@ export default function App() {
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Volume Consumed</span>
                   <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{displayVolume.toFixed(2)} {volUnit}</div>
                 </div>
-                <div style={{ borderLeft: '3px solid var(--accent-orange)', paddingLeft: '12px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Signal Stability</span>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{isRfLinked ? 'LINK OK' : 'LINK STUCK'}</div>
-                </div>
+
                 {(isClog || isBroken || isLeak) && (
                   <div style={{ borderLeft: '3px solid var(--accent-red)', paddingLeft: '12px' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>System Alarms</span>
