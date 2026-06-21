@@ -174,7 +174,7 @@ export default function App() {
       setAutoRestartNormal(localStorage.getItem('lt_nr_auto') === 'true');
     };
     
-    const handleTestAlert = () => triggerAlert('Test Alert', 'This is a test of the Boat & RV Guardian alert system.');
+    const handleTestAlert = () => triggerAlert('Test Alert', 'This is a test of the Boat & Rv Guardian alert system.');
     
     window.addEventListener('settings_updated', handleSettingsUpdate);
     window.addEventListener('test_alert', handleTestAlert);
@@ -1833,7 +1833,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <button onClick={() => triggerAlert('Test Alert', 'This is a test of the Boat & RV Guardian alert system.')} className="btn-secondary" style={{ width: '100%', height: '100%', minHeight: '60px', padding: '12px' }}>Test Alert System</button>
+                    <button onClick={() => triggerAlert('Test Alert', 'This is a test of the Boat & Rv Guardian alert system.')} className="btn-secondary" style={{ width: '100%', height: '100%', minHeight: '60px', padding: '12px' }}>Test Alert System</button>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

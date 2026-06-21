@@ -12,7 +12,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg}']
       },
       manifest: {
-        name: 'Boat & RV Guardian',
+        name: 'Boat & Rv Guardian',
         short_name: 'Guardian',
         description: 'A smart dashboard for using LinkTap as a burst pipe auto-shutoff system.',
         theme_color: '#1e293b',

@@ -1,4 +1,4 @@
-# Boat & RV Guardian
+# Boat & Rv Guardian
 
 A premium water safety and smart monitoring dashboard built for Boats and RVs. Convert standard smart-home hardware (LinkTap valves, Shelly sensors) into an enterprise-grade water safety and auto-shutoff system.
 
