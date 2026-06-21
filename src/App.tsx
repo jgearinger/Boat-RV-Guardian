@@ -1911,15 +1911,6 @@ export default function App() {
                 <div style={{ marginTop: '8px' }}><label className="form-label">Local Polling Rate: {effectiveInterval}s</label><input type="range" min="2" max="30" className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
 
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: mockMode ? 1 : 0.6 }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    Simulate Locally (Mock Mode)
-                  </label>
-                  <input type="checkbox" checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
-                </div>
-
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
 
                 {/* History Tracking */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1930,6 +1921,15 @@ export default function App() {
                   <input type="checkbox" checked={enableHistory} onChange={(e) => setEnableHistory(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
                 </div>
                 
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: mockMode ? 1 : 0.6 }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    Simulate Locally (Mock Mode)
+                  </label>
+                  <input type="checkbox" checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                </div>
+
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
 
                 {/* Update & Version */}
