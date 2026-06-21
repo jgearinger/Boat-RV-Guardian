@@ -1192,13 +1192,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            {/* Network Mode Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.75rem', fontWeight: 600 }}>
-              <span style={{ marginRight: '6px' }}>🌐</span>
-              {isCloudPollingActive && isLocalPollingActive ? 'Cloud & Local Mode' : 
-               isCloudPollingActive ? 'Cloud Only Mode' : 
-               isLocalPollingActive ? 'Local Only Mode' : 'Offline / Disconnected'}
-            </div>
+
             {/* Battery Indicator */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={battery < 15 ? 'var(--accent-red)' : 'var(--accent-emerald)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1223,7 +1217,12 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <span className={`status-dot ${connectionStatus}`}></span>
               <span style={{ fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                {connectionStatus === 'mock' ? 'MOCK MODE' : connectionStatus === 'connected' ? 'CONNECTED' : 'OFFLINE'}
+                {connectionStatus === 'mock' ? 'MOCK MODE' : 
+                 connectionStatus === 'connected' ? 
+                   (isCloudPollingActive && isLocalPollingActive ? 'CLOUD & LOCAL CONNECTED' : 
+                    isCloudPollingActive ? 'CLOUD ONLY CONNECTED' : 
+                    isLocalPollingActive ? 'LOCAL ONLY CONNECTED' : 'CONNECTED') 
+                 : 'OFFLINE'}
               </span>
             </div>
 
@@ -1775,7 +1774,14 @@ export default function App() {
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Hardware Connections</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className={`status-dot ${connectionStatus}`}></span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{connectionStatus === 'mock' ? 'MOCK MODE' : connectionStatus === 'connected' ? 'CONNECTED' : 'OFFLINE'}</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
+                      {connectionStatus === 'mock' ? 'MOCK MODE' : 
+                       connectionStatus === 'connected' ? 
+                         (isCloudPollingActive && isLocalPollingActive ? 'CLOUD & LOCAL CONNECTED' : 
+                          isCloudPollingActive ? 'CLOUD ONLY CONNECTED' : 
+                          isLocalPollingActive ? 'LOCAL ONLY CONNECTED' : 'CONNECTED') 
+                       : 'OFFLINE'}
+                    </span>
                     <button onClick={() => setManualRefresh(r => r + 1)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '0.7rem', marginLeft: '8px', opacity: 0.8 }}>
                       ↻ Refresh
                     </button>
