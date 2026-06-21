@@ -1304,16 +1304,33 @@ export default function App() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px', alignItems: 'center' }}>
-              {/* Giant Digital Meter */}
-              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.02)', textAlign: 'center', position: 'relative' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Speed</span>
-                <div style={{ fontSize: '3rem', fontWeight: 800, color: displaySpeed > maxFlowRate ? 'var(--accent-red)' : 'var(--accent-cyan)', margin: '8px 0', textShadow: displaySpeed > maxFlowRate ? '0 0 15px rgba(239,68,68,0.3)' : '0 0 15px rgba(0,242,254,0.3)' }}>
-                  {displaySpeed.toFixed(1)}
-                  <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '6px' }}>{speedUnit}</span>
+              {/* Giant Water Meter */}
+              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.02)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', position: 'relative', zIndex: 10 }}>
+                  
+                  {/* Flow Rate */}
+                  <div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Speed</span>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: displaySpeed > maxFlowRate ? 'var(--accent-red)' : 'var(--accent-cyan)', margin: '4px 0', textShadow: displaySpeed > maxFlowRate ? '0 0 15px rgba(239,68,68,0.3)' : '0 0 15px rgba(0,242,254,0.3)' }}>
+                      {displaySpeed.toFixed(1)}
+                      <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '4px' }}>{speedUnit}</span>
+                    </div>
+                  </div>
+
+                  {/* Volume Consumed */}
+                  <div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Volume Consumed</span>
+                    <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--accent-blue)', margin: '4px 0', textShadow: '0 0 15px rgba(56,189,248,0.3)' }}>
+                      {displayVolume.toFixed(2)}
+                      <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '4px' }}>{volUnit}</span>
+                    </div>
+                  </div>
+
                 </div>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+
+                <div style={{ marginTop: '16px', fontSize: '0.8rem', color: 'var(--text-muted)', position: 'relative', zIndex: 10 }}>
                   {isWatering ? `${(remainDuration / 60).toFixed(1)} mins remaining` : 'Waiting for flow...'}
-                </span>
+                </div>
                 
                 {/* Flow Wave Animation */}
                 <div className="wave-container">
@@ -1324,10 +1341,6 @@ export default function App() {
 
               {/* Auxiliary Quick Stats */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ borderLeft: '3px solid var(--accent-blue)', paddingLeft: '12px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Volume Consumed</span>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>{displayVolume.toFixed(2)} {volUnit}</div>
-                </div>
 
                 {(isClog || isBroken || isLeak) && (
                   <div style={{ borderLeft: '3px solid var(--accent-red)', paddingLeft: '12px' }}>
