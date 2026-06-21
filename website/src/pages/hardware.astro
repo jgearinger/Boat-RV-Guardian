@@ -40,6 +40,61 @@ import Layout from '../layouts/Layout.astro';
 			</div>
 		</div>
 
+		<!-- Physical Setup Guide -->
+		<section class="installation-guide">
+			<div class="glass-card">
+				<h2>Physical Installation Best Practices</h2>
+				<p>When setting up your smart water valve for a Boat or RV, physical placement is just as important as the software itself. To maximize safety and prevent catastrophic water damage, it is highly recommended to install the smart valve directly at the <strong>source spigot</strong>, rather than inside your vehicle or on the vehicle's water inlet.</p>
+				
+				<div class="setup-grid">
+					<div>
+						<h3>The Ideal Configuration</h3>
+						<ol class="setup-steps">
+							<li><strong>Source Spigot</strong> (Campsite/Marina water source)</li>
+							<li><strong>Smart Water Valve</strong> (LinkTap Gateway, attached directly to the spigot)</li>
+							<li><strong>Water Hose</strong> (Connects the valve to the RV/Boat)</li>
+							<li><strong>RV/Boat City Water Inlet</strong></li>
+						</ol>
+
+						<h3>Why Place the Valve at the Source?</h3>
+						<p>Many owners make the mistake of installing pressure regulators, filters, and smart valves directly onto the water inlet on the side of their RV. <strong>This leaves the water hose completely unprotected.</strong></p>
+						<p>Water hoses are exposed to UV rays, physical wear, and fluctuating campsite water pressures. If a hose bursts while you are away, water will spray continuously. If your smart valve is inside the RV or attached to the inlet, it cannot stop a leak happening <em>before</em> the valve.</p>
+					</div>
+					<div>
+						<h3>Benefits of Source-Spigot Installation</h3>
+						<ul class="benefits-list">
+							<li><strong>Complete Hose Protection:</strong> If the hose ruptures, the valve detects the abnormal continuous flow and shuts off the water at the source.</li>
+							<li><strong>Internal Plumbing Protection:</strong> It still provides full protection for all internal plumbing inside your RV or Boat.</li>
+							<li><strong>Reduced Weight on Inlet:</strong> Smart valves and gateways can be heavy. Keeping the weight on the sturdy metal campsite spigot prevents structural damage to your vehicle's plastic fittings.</li>
+						</ul>
+
+						<h3>Additional Tips</h3>
+						<ul class="benefits-list">
+							<li><strong>Pressure Regulator:</strong> Place it <em>after</em> the smart valve to protect your hose from high-pressure spikes.</li>
+							<li><strong>Support the Valve:</strong> If your setup is heavy (e.g., adding Y-splitters), use a hose support stand to take weight off the spigot.</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Webhook Setup Guide -->
+		<section class="webhook-guide">
+			<div class="glass-card">
+				<h2>Shelly Flood Sensor Webhooks</h2>
+				<p>To ensure your standalone Shelly Flood sensors instantly trigger the LinkTap shutoff valve, configure the webhook in the sensor's Web Admin interface:</p>
+				<ol class="setup-steps">
+					<li>Connect the Shelly sensor to your local Wi-Fi.</li>
+					<li>Open the sensor's Web Admin interface in your browser.</li>
+					<li>Navigate to <strong>Actions / Webhooks</strong>.</li>
+					<li>Set the condition to trigger when water is detected.</li>
+					<li>Set the URL to point to your dashboard's local API (e.g., <code>http://&lt;YOUR_COMPUTER_IP&gt;:3030/api/webhook/flood</code>).</li>
+					<li>Make sure it uses the <strong>POST</strong> method.</li>
+				</ol>
+				<p class="note" style="margin-top: 1rem;">Whenever the sensor detects a leak, it fires this webhook, instantly triggering the Guardian app to close the main valve.</p>
+			</div>
+		</section>
+
 		<section class="architecture-diagram glass-card">
 			<h2>How it connects</h2>
 			<div class="diagram-placeholder">
@@ -136,9 +191,53 @@ import Layout from '../layouts/Layout.astro';
 		line-height: 2;
 	}
 
+	.installation-guide, .webhook-guide {
+		margin-bottom: 4rem;
+	}
+
+	.installation-guide h2, .webhook-guide h2 {
+		margin-top: 0;
+		font-size: 1.8rem;
+		margin-bottom: 1rem;
+		border-bottom: 1px solid var(--surface-border);
+		padding-bottom: 1rem;
+	}
+
+	.setup-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 3rem;
+		margin-top: 2rem;
+	}
+
+	.setup-grid h3 {
+		font-size: 1.3rem;
+		color: var(--accent-color);
+		margin-bottom: 1rem;
+		margin-top: 2rem;
+	}
+
+	.setup-grid h3:first-child {
+		margin-top: 0;
+	}
+
+	.setup-steps, .benefits-list {
+		padding-left: 1.2rem;
+		color: var(--text-main);
+	}
+
+	.setup-steps li, .benefits-list li {
+		margin-bottom: 0.8rem;
+	}
+
+	.webhook-guide .setup-steps {
+		margin-top: 1.5rem;
+	}
+
 	@media (max-width: 768px) {
-		.hardware-grid {
+		.hardware-grid, .setup-grid {
 			grid-template-columns: 1fr;
+			gap: 2rem;
 		}
 	}
 </style>
