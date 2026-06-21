@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithCredential } from '../services/firebase';
 import { open } from '@tauri-apps/plugin-shell';
 import { start, onUrl, cancel } from '@fabianlars/tauri-plugin-oauth';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -90,6 +92,16 @@ export default function Login() {
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=id_token&scope=email%20profile%20openid&nonce=12345`;
         
         await open(authUrl);
+      } else if (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios') {
+        // Run native capacitor plugin sign in
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        if (result.credential?.idToken) {
+          const credential = GoogleAuthProvider.credential(result.credential.idToken);
+          await signInWithCredential(auth, credential);
+        } else {
+          setError('Failed to obtain Google ID Token from Native Auth');
+        }
+        setLoading(false);
       } else {
         // Running in a standard web browser, use standard popup
         const provider = new GoogleAuthProvider();
