@@ -2,6 +2,8 @@ use std::io::{Read, Write};
 use std::net::{TcpStream, SocketAddr, IpAddr};
 use std::time::Duration;
 use tauri::command;
+use axum::{routing::post, Router};
+use tauri::{AppHandle, Emitter};
 
 // ---------------------------------------------------------------------------
 // Existing raw HTTP command (keep as-is — used for all LinkTap API calls)
@@ -212,6 +214,30 @@ async fn discover_gateway() -> Result<Vec<String>, String> {
 }
 
 // ---------------------------------------------------------------------------
+// Webhook Server
+// ---------------------------------------------------------------------------
+
+async fn flood_webhook_handler(axum::extract::State(app_handle): axum::extract::State<AppHandle>) -> &'static str {
+    let _ = app_handle.emit("flood-alarm", ());
+    "OK"
+}
+
+fn start_webhook_server(app_handle: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        let app = Router::new()
+            .route("/api/webhook/flood", post(flood_webhook_handler))
+            .with_state(app_handle);
+
+        let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 3030));
+        let listener = match tokio::net::TcpListener::bind(&addr).await {
+            Ok(l) => l,
+            Err(_) => return,
+        };
+        let _ = axum::serve(listener, app).await;
+    });
+}
+
+// ---------------------------------------------------------------------------
 // App entry point
 // ---------------------------------------------------------------------------
 
@@ -222,6 +248,9 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
+            let app_handle = app.handle().clone();
+            start_webhook_server(app_handle);
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()

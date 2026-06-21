@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "Boat and RV Guardian",
-        "url": "app/index.html",
+        "url": "index.html",
         "width": 800,
         "height": 600,
         "resizable": true,

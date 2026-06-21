@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
@@ -19,7 +18,7 @@ export default defineConfig({
         theme_color: '#1e293b',
         background_color: '#0f172a',
         display: 'standalone',
-        start_url: '/Boat-RV-Guardian/app/index.html',
+        start_url: '/',
         icons: [
           {
             src: 'app_icon_192.png',
@@ -38,11 +37,6 @@ export default defineConfig({
   ],
   base: './',
   build: {
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
-        app: resolve(__dirname, 'app/index.html')
-      }
-    }
+    outDir: 'dist'
   }
 })

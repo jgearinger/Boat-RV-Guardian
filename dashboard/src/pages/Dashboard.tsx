@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import Setup from './Setup';
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
 
 const invokeTauri = async (cmd: string, args?: any) => {
@@ -7,6 +8,14 @@ const invokeTauri = async (cmd: string, args?: any) => {
     return invoke(cmd, args);
   }
   throw new Error("Tauri API not available");
+};
+
+const listenTauri = async (event: string, handler: (e: any) => void) => {
+  if (isTauriEnv()) {
+    const { listen } = await import('@tauri-apps/api/event');
+    return listen(event, handler);
+  }
+  return () => {};
 };
 
 const APP_VERSION = '1.0.26';
@@ -181,6 +190,7 @@ export default function App() {
     { time: new Date().toLocaleTimeString(), type: 'info', message: 'Mock Mode enabled by default. Simulate API events below.' }
   ]);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'setup'>('general');
   const [showSimulatorModal, setShowSimulatorModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyTab, setHistoryTab] = useState<'hourly'|'daily'|'weekly'|'monthly'>('daily');
@@ -270,6 +280,7 @@ export default function App() {
     setIsGatewayDiscovering(false);
   };
   // --- App State ---
+  const [isFloodAlarmActive, setIsFloodAlarmActive] = useState<boolean>(false);
   const [isCommandLoading, setIsCommandLoading] = useState<boolean | 'start' | 'stop'>(false);
   const lastCommandTimeRef = useRef<number>(0);
   const expectedWateringStateRef = useRef<boolean | null>(null);
@@ -472,6 +483,26 @@ export default function App() {
       }
     }
   };
+
+  useEffect(() => {
+    let unlisten: any;
+    const setupFloodListener = async () => {
+      try {
+        unlisten = await listenTauri('flood-alarm', () => {
+          setIsFloodAlarmActive(true);
+          playSynthesizedAlarm('siren');
+          triggerAlert('CRITICAL', 'Flood Sensor Triggered! Instantly closing the valve.', false);
+          if (commandersRef.current.stop) commandersRef.current.stop('limit');
+        });
+      } catch (e) {
+        console.error('Failed to setup flood listener:', e);
+      }
+    };
+    setupFloodListener();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
 
   // Listen for PWA Install Prompt
   useEffect(() => {
@@ -1628,7 +1659,7 @@ export default function App() {
                 className="btn-danger-glow"
                 style={{ width: '100%', padding: '16px 20px', fontSize: '1.1rem' }}
               >
-                🛑 {isCommandLoading === 'stop' ? 'STOPPING...' : 'Instant Valve Close (STOP)'}
+                🛑 {isCommandLoading === 'stop' ? 'STOPPING...' : 'Stop Water (Close Valve)'}
               </button>
             </div>
           </div>
@@ -1689,8 +1720,12 @@ export default function App() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(4,8,20,0.85)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
            <div className="glass-card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative' }}>
               <button onClick={() => setShowSettingsModal(false)} className="btn-secondary" style={{ position: 'absolute', top: '20px', right: '20px', padding: '6px 10px', fontSize: '1rem', zIndex: 10 }}>✕</button>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>⚙️ System Settings</h2>
-              
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+                <button onClick={() => setSettingsTab('general')} className={settingsTab === 'general' ? 'btn-primary' : 'btn-secondary'} style={{ padding: '8px 16px', fontSize: '1rem', flex: 1, boxShadow: 'none' }}>General Settings</button>
+                <button onClick={() => setSettingsTab('setup')} className={settingsTab === 'setup' ? 'btn-primary' : 'btn-secondary'} style={{ padding: '8px 16px', fontSize: '1rem', flex: 1, boxShadow: 'none' }}>Initial Setup</button>
+              </div>
+
+              <div style={{ display: settingsTab === 'general' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
               {/* Normal Run Profile Config */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-emerald)' }}>Normal Run Profile</h3>
@@ -2071,6 +2106,13 @@ export default function App() {
                   </a>
                 </div>
               </div>
+              
+              {/* Close the 'general' tab div */}
+              </div>
+
+              <div style={{ display: settingsTab === 'setup' ? 'block' : 'none' }}>
+                <Setup />
+              </div>
            </div>
         </div>
       )}
@@ -2084,6 +2126,7 @@ export default function App() {
               <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '12px' }}>Mock Simulator Console</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>Test your flood alarm system immediately: Simulate high-rate leakages, pipe damage, or low batteries.</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+                <button onClick={() => fetch('http://localhost:3030/api/webhook/flood', { method: 'POST' }).catch(console.error)} className="btn-secondary" style={{ border: '1px solid rgba(239, 68, 68, 0.8)', background: 'rgba(239, 68, 68, 0.2)', color: '#fff' }}>🌊 Simulate Flood Sensor (Webhook)</button>
                 <button onClick={triggerMockBurst} className="btn-secondary" style={{ border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.05)', color: '#ff8b8b' }}>💥 Simulate 28 L/min Pipe Burst</button>
                 <button onClick={triggerMockLeak} className="btn-secondary" style={{ border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.05)', color: '#fde68a' }}>⚠️ Simulate Weeping Pipe Leak</button>
                 <button onClick={triggerMockLowBattery} className="btn-secondary">🔋 Simulate Battery Drop (8%)</button>
@@ -2119,6 +2162,27 @@ export default function App() {
       <div style={{ position: 'fixed', bottom: '10px', right: '12px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', pointerEvents: 'none', userSelect: 'none', zIndex: 1 }}>
         v{APP_VERSION}
       </div>
+      {/* Flood Alarm Modal */}
+      {isFloodAlarmActive && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(239, 68, 68, 0.95)', backdropFilter: 'blur(10px)', zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', color: '#fff', textAlign: 'center' }}>
+          <div style={{ fontSize: '4rem', marginBottom: '20px', animation: 'pulse 1s infinite alternate' }}>🌊 🚨 🌊</div>
+          <h2 style={{ fontSize: '2.5rem', margin: '0 0 20px 0', textTransform: 'uppercase', fontWeight: 900 }}>Flood Detected!</h2>
+          <p style={{ fontSize: '1.2rem', maxWidth: '400px', lineHeight: 1.5, marginBottom: '40px' }}>
+            A high water level was detected by the local flood sensor. The smart valve has been instructed to instantly stop water flow.
+          </p>
+          <button 
+            className="btn-primary" 
+            style={{ padding: '16px 32px', fontSize: '1.2rem', background: '#fff', color: '#e53e3e', fontWeight: 'bold' }}
+            onClick={() => {
+              setIsFloodAlarmActive(false);
+              setActiveAlarmSound(null);
+            }}
+          >
+            Acknowledge & Silence Alarm
+          </button>
+        </div>
+      )}
+
       {/* Usage History Modal */}
       {showHistoryModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(4,8,20,0.85)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>

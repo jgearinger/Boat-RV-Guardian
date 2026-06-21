@@ -33,3 +33,18 @@ Water hoses are exposed to UV rays, physical wear, and fluctuating campsite wate
 - **Use a Pressure Regulator:** Always install a water pressure regulator. We recommend placing it *after* the smart valve to protect your hose from high-pressure spikes.
 - **Support the Valve:** If your setup is heavy (e.g., adding Y-splitters or filters), use a hose support stand or block to take the weight off the campsite spigot.
 - **Check Wi-Fi Range:** Ensure your smart valve is still within range of its wireless Gateway when attached to the spigot. Modern long-range protocols usually have no problem reaching from inside an RV to the outside spigot.
+
+## Flood Sensors & Webhooks
+
+To add an extra layer of protection, you can deploy standalone water leak sensors (such as the **Shelly Flood Gen4**) inside your Boat or RV. 
+
+When configuring a Shelly Flood sensor:
+1. Connect the sensor to the same local Wi-Fi network as your Boat & RV Guardian app.
+2. Open the sensor's Web Admin interface in your browser.
+3. Navigate to **Actions / Webhooks**.
+4. Set the **Condition** to trigger when water is detected.
+5. Set the **URL** to point to the local instance of your Guardian app using port 3030:
+   `http://<YOUR_COMPUTER_IP>:3030/api/webhook/flood`
+6. Make sure it uses the `POST` method.
+
+Whenever the sensor detects a leak, it will fire this webhook, instantly triggering the Guardian app to close the main valve at the spigot.
