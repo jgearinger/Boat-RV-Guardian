@@ -244,8 +244,7 @@ export default function App() {
     setIsGatewayDiscovering(true);
     setGatewayDiscoveryMsg('Scanning network... (mDNS + subnet scan)');
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const found: string[] = await invoke('discover_gateway');
+      const found: string[] = await invokeTauri('discover_gateway');
       if (found.length === 0) {
         setGatewayDiscoveryMsg('No LinkTap gateway found. Try enabling mDNS in the gateway web admin, or enter the IP manually.');
       } else if (found.length === 1) {
@@ -633,7 +632,12 @@ export default function App() {
         }
 
         // 2. Fallback to Cloud API (If local fails, e.g., device not on same network)
-        if (!data && isCloudPollingActive && cloudUsername && cloudApiKey) {
+        // Guard: Cloud API enforces a 30s minimum poll interval — track last call time
+        const now = Date.now();
+        const lastCloudPoll = (window as any).__lastCloudStatusPoll || 0;
+        const cloudCooldownMs = 31000; // 31s to stay safely above the 30s limit
+        if (!data && isCloudPollingActive && cloudUsername && cloudApiKey && (now - lastCloudPoll >= cloudCooldownMs)) {
+           (window as any).__lastCloudStatusPoll = now;
            usedCloud = true;
            const cloudRes = await unifiedFetch('https://www.link-tap.com/api/getWateringStatus', {
              method: 'POST',
@@ -1907,12 +1911,12 @@ export default function App() {
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button 
                             className={isLocalPollingActive ? "btn-secondary" : "btn-primary"}
-                            onClick={() => setIsLocalPollingActive(!isLocalPollingActive)}
+                            onClick={() => setIsLocalPollingActive(prev => !prev)}
                             style={{ padding: '4px 12px', fontSize: '0.75rem', fontWeight: 700, opacity: isLocalPollingActive ? 0.7 : 1, background: isLocalPollingActive ? '' : 'var(--accent-emerald)' }}
                           >
                             {isLocalPollingActive ? '✓ Connected' : 'Connect'}
                           </button>
-                          <button className="btn-secondary" onClick={() => setManualRefresh(Date.now())} style={{ padding: '4px 12px', fontSize: '0.75rem' }}>↻ Refresh</button>
+                          <button className="btn-secondary" onClick={() => { if (isLocalPollingActive) setManualRefresh(Date.now()); }} style={{ padding: '4px 12px', fontSize: '0.75rem' }}>↻ Refresh</button>
                         </div>
                       </div>
                       <div>
