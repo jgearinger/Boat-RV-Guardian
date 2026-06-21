@@ -1469,7 +1469,7 @@ export default function App() {
                    </select>
                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
                      <input type="checkbox" checked={washDownResumeNormal} onChange={(e) => setWashDownResumeNormal(e.target.checked)} />
-                     Resume Normal Run when timer expires
+                     Start 'Normal Run' when timer expires
                    </label>
                  </div>
                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
