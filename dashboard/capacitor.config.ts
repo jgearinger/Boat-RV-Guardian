@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.jgearinger.boatrvguardian',
-  appName: 'Boat-RV-Guardian',
+  appName: 'Boat & RV Guardian',
   webDir: 'dist',
   server: {
     androidScheme: 'http',
