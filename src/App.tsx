@@ -228,6 +228,7 @@ export default function App() {
   const [delayedStartSecs, setDelayedStartSecs] = useState(() => Number(localStorage.getItem('lt_del_secs') || '15'));
   const [washDownDuration, setWashDownDuration] = useState(() => Number(localStorage.getItem('lt_wash_dur') || '30'));
   const [washDownResumeNormal, setWashDownResumeNormal] = useState(() => localStorage.getItem('lt_wd_resume') === 'true');
+  const [normalRunDaily, setNormalRunDaily] = useState(() => localStorage.getItem('lt_norm_daily') === 'true');
   const [normalRunHours, setNormalRunHours] = useState(() => Number(localStorage.getItem('lt_norm_hrs') || '24'));
   const [normalRunMinutes, setNormalRunMinutes] = useState(() => Number(localStorage.getItem('lt_norm_mins') || '0'));
   const [normalRunVolume, setNormalRunVolume] = useState(() => Number(localStorage.getItem('lt_norm_vol') || '300'));
@@ -291,6 +292,7 @@ export default function App() {
     localStorage.setItem('lt_del_secs', delayedStartSecs.toString());
     localStorage.setItem('lt_wash_dur', washDownDuration.toString());
     localStorage.setItem('lt_wd_resume', washDownResumeNormal.toString());
+    localStorage.setItem('lt_norm_daily', normalRunDaily.toString());
     localStorage.setItem('lt_norm_hrs', normalRunHours.toString());
     localStorage.setItem('lt_norm_mins', normalRunMinutes.toString());
     localStorage.setItem('lt_norm_vol', normalRunVolume.toString());
@@ -315,7 +317,7 @@ export default function App() {
     gatewayIp, gatewayId, deviceId, refreshInterval, mockMode, autoGuardEnabled, 
     maxDuration, maxFlowRate, cloudUsername, cloudApiKey,
     inputDuration, inputVolume, delayedStartMins, delayedStartSecs, washDownDuration,
-    normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
+    normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, autoRestartNormal,
     targetDuration, targetVolume, isCloudPollingActive, isLocalPollingActive, notificationsEnabled, alarmSound,
     alarmVolume, alarmRepeatInterval, notifyAutoGuard, notifyLowBattery, notifyWatering
   ]);
@@ -512,10 +514,10 @@ export default function App() {
   }, [isWatering, notifyWatering]);
 
   const commandersRef = useRef({ start: null as any, stop: null as any });
-  const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory });
+  const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory });
   useEffect(() => {
-    stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory };
-  }, [isWatering, remainDuration, speed, autoRestartNormal, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory]);
+    stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory };
+  }, [isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory]);
 
   // --- Real-time Polling Logic ---
   useEffect(() => {
@@ -547,7 +549,8 @@ export default function App() {
                  setTimeout(() => {
                     let vol = stateRef.current.normalRunVolume;
                     if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
-                    if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
+                    const durationMins = stateRef.current.normalRunDaily ? 1439 : (stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes;
+                    if (commandersRef.current.start) commandersRef.current.start(durationMins, vol);
                  }, 5000);
               }
               return 0;
@@ -706,7 +709,8 @@ export default function App() {
             setTimeout(() => {
                let vol = stateRef.current.normalRunVolume;
                if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
-               if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
+               const durationMins = stateRef.current.normalRunDaily ? 1439 : (stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes;
+               if (commandersRef.current.start) commandersRef.current.start(durationMins, vol);
             }, 5000);
           }
         }
@@ -771,7 +775,8 @@ export default function App() {
             washDownTransitionTimeRef.current = null;
             let vol = stateRef.current.normalRunVolume;
             if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
-            if (commandersRef.current.start) commandersRef.current.start((stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes, vol);
+            const durationMins = stateRef.current.normalRunDaily ? 1439 : (stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes;
+            if (commandersRef.current.start) commandersRef.current.start(durationMins, vol);
           } else {
             // Override UI remain duration so it shows the exact Washdown time instead of Washdown + Buffer
             data.remain_duration = Math.round(remainingMs / 1000);
@@ -1426,7 +1431,7 @@ export default function App() {
               <div style={{ background: 'rgba(0,0,0,0.15)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '8px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Configured Target Time:</span>
-                  <span style={{ fontWeight: 'bold' }}>{normalRunHours} hr {normalRunMinutes} min</span>
+                  <span style={{ fontWeight: 'bold' }}>{normalRunDaily ? 'Daily (23h 59m)' : `${normalRunHours} hr ${normalRunMinutes} min`}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '8px' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Configured Volume Limit:</span>
@@ -1442,7 +1447,8 @@ export default function App() {
                 onClick={() => {
                    let vol = normalRunVolume;
                    if (unitSystem === 'imperial') vol = vol / 0.264172; // Convert to liters for API
-                   executeStartCommand((normalRunHours * 60) + normalRunMinutes, vol);
+                   const durationMins = normalRunDaily ? 1439 : (normalRunHours * 60) + normalRunMinutes;
+                   executeStartCommand(durationMins, vol);
                 }}
                 className="btn-primary"
                 style={{ marginTop: '12px', width: '100%', padding: '12px', fontSize: '0.95rem', background: isWatering ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #10b981, #059669)', color: isWatering ? '#888' : '#fff' }}
@@ -1622,10 +1628,14 @@ export default function App() {
                   <div>
                     <label className="form-label">Duration</label>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <input type="number" min="0" className="form-input" value={normalRunHours} onChange={(e) => setNormalRunHours(Math.max(0, Number(e.target.value)))} style={{ width: '40%', padding: '8px' }} />
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>hrs</span>
-                      <input type="number" min="0" max="59" className="form-input" value={normalRunMinutes} onChange={(e) => setNormalRunMinutes(Math.min(59, Math.max(0, Number(e.target.value))))} style={{ width: '40%', padding: '8px' }} />
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>mins</span>
+                      <input type="number" min="0" max="23" disabled={normalRunDaily} className="form-input" value={normalRunHours} onChange={(e) => setNormalRunHours(Math.min(23, Math.max(0, Number(e.target.value))))} style={{ width: '35%', padding: '8px', opacity: normalRunDaily ? 0.5 : 1 }} />
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, opacity: normalRunDaily ? 0.5 : 1 }}>hrs</span>
+                      <input type="number" min="0" max="59" disabled={normalRunDaily} className="form-input" value={normalRunMinutes} onChange={(e) => setNormalRunMinutes(Math.min(59, Math.max(0, Number(e.target.value))))} style={{ width: '35%', padding: '8px', opacity: normalRunDaily ? 0.5 : 1 }} />
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, opacity: normalRunDaily ? 0.5 : 1 }}>mins</span>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '6px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={normalRunDaily} onChange={(e) => setNormalRunDaily(e.target.checked)} style={{ width: '16px', height: '16px', accentColor: 'var(--accent-cyan)' }} />
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Daily</span>
+                      </label>
                     </div>
                   </div>
                   <div>
@@ -1640,7 +1650,8 @@ export default function App() {
                     if (checked && isWatering) {
                        let vol = normalRunVolume;
                        if (unitSystem === 'imperial') vol = vol / 0.264172;
-                       executeStartCommand((normalRunHours * 60) + normalRunMinutes, vol);
+                       const durationMins = normalRunDaily ? 1439 : (normalRunHours * 60) + normalRunMinutes;
+                       executeStartCommand(durationMins, vol);
                     }
                   }} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Auto-restart profile automatically when time expires</span>
