@@ -950,7 +950,6 @@ export default function App() {
     try {
       setErrorMsg(null);
       let success = false;
-      let usedLocal = false;
 
       // 1. Attempt Cloud API first
       if (cloudUsername && cloudApiKey) {
@@ -994,7 +993,6 @@ export default function App() {
         
         if (!localRes.ok) throw new Error(`Local HTTP Error ${localRes.status}`);
         success = true;
-        usedLocal = true;
         addLog('success', 'Local API Stop command received by Gateway.');
       }
 
