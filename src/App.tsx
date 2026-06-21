@@ -844,19 +844,23 @@ export default function App() {
       // 1. Always attempt Cloud API first for maximum safety (hardware volume cutoffs)
       if (isCloudPollingActive && cloudUsername && cloudApiKey) {
         try {
+          const payload: any = {
+            username: cloudUsername,
+            apiKey: cloudApiKey,
+            gatewayId,
+            taplinkerId: deviceId,
+            action: true,
+            duration: Math.min(1439, durationMins), // Cloud API strict max is 1439 mins (23h 59m)
+            autoBack: true
+          };
+          if (volumeLimitLiters > 0) {
+            payload.vol = Math.round(volumeLimitLiters);
+          }
+
           const cloudRes = await unifiedFetch('https://www.link-tap.com/api/activateInstantMode', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: cloudUsername,
-              apiKey: cloudApiKey,
-              gatewayId,
-              taplinkerId: deviceId,
-              action: true,
-              duration: durationMins, // Cloud API takes minutes
-              vol: Math.round(volumeLimitLiters), 
-              autoBack: true
-            }),
+            body: JSON.stringify(payload),
           });
           
           if (!cloudRes.ok) throw new Error(`Cloud HTTP Error ${cloudRes.status}`);
