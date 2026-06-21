@@ -29,6 +29,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install frontend dependencies
+        working-directory: ./dashboard
         run: npm ci
 
       - name: Build and Release Tauri App
@@ -36,6 +37,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          projectPath: ./dashboard
           tagName: ${{ github.ref_name }}
           releaseName: 'Boat & RV Guardian ${{ github.ref_name }}'
           releaseBody: 'See the assets below to download the app for Android, macOS, or Windows.'
@@ -63,19 +65,22 @@ jobs:
           java-version: '21'
 
       - name: Install frontend dependencies
+        working-directory: ./dashboard
         run: npm ci
 
       - name: Build Frontend
+        working-directory: ./dashboard
         run: npm run build
 
       - name: Sync Capacitor
+        working-directory: ./dashboard
         run: npx cap sync android
 
       - name: Make gradlew executable
-        run: chmod +x android/gradlew
+        run: chmod +x dashboard/android/gradlew
 
       - name: Build Release APK
-        working-directory: ./android
+        working-directory: ./dashboard/android
         timeout-minutes: 20
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
@@ -84,18 +89,18 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
-            echo $KEYSTORE_BASE64 | base64 --decode > android/app/release.keystore
+            echo $KEYSTORE_BASE64 | base64 --decode > dashboard/android/app/release.keystore
             export BUILD_TOOLS_VERSION=$(ls $ANDROID_SDK_ROOT/build-tools/ | sort -V | tail -n 1)
             $ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/apksigner sign \
-              --ks android/app/release.keystore \
+              --ks dashboard/android/app/release.keystore \
               --ks-key-alias boatguardian \
               --ks-pass pass:boatguardian \
               --key-pass pass:boatguardian \
-              android/app/build/outputs/apk/release/app-release-unsigned.apk
-            mv android/app/build/outputs/apk/release/app-release-unsigned.apk boat-rv-guardian-release.apk
+              dashboard/android/app/build/outputs/apk/release/app-release-unsigned.apk
+            mv dashboard/android/app/build/outputs/apk/release/app-release-unsigned.apk boat-rv-guardian-release.apk
           else
             echo "No keystore secret set, uploading unsigned APK"
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk boat-rv-guardian-release.apk
+            cp dashboard/android/app/build/outputs/apk/release/app-release-unsigned.apk boat-rv-guardian-release.apk
           fi
 
       - name: Upload APK to Release

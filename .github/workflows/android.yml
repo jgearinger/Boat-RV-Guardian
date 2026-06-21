@@ -19,6 +19,7 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
+        working-directory: ./dashboard
         run: npm ci
 
       - name: Setup Java
@@ -28,14 +29,15 @@ jobs:
           java-version: '21'
 
       - name: Sync Capacitor Android
-        run: npm run android:sync
+        working-directory: ./dashboard
+        run: npx cap sync android
 
       - name: Build Android APK
-        working-directory: ./android
+        working-directory: ./dashboard/android
         run: ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: boat-rv-guardian-debug.apk
-          path: '**/*.apk'
+          path: 'dashboard/android/app/build/outputs/apk/debug/**/*.apk'

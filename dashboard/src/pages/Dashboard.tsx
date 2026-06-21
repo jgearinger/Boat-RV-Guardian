@@ -1748,6 +1748,100 @@ export default function App() {
               <div style={{ display: settingsTab === 'general' ? 'flex' : 'none', flexDirection: 'column', gap: '24px' }}>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>App Settings</h3>
+                <div>
+                  <label className="form-label">Daily Counter Reset Time</label>
+                  <input type="time" className="form-input" value={resetTime} onChange={(e) => setResetTime(e.target.value)} />
+                </div>
+              </div>
+              
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Flooding Sentry</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', color: autoGuardEnabled ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>{autoGuardEnabled ? 'AUTO-GUARD ON' : 'DISABLED'}</span>
+                    <input type="checkbox" checked={autoGuardEnabled} onChange={(e) => setAutoGuardEnabled(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                  </div>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Automatically shuts down the local water connection (cmd: 7) if values exceed thresholds or physical anomalies occur.</p>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Notifications & Alarms</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', color: notificationsEnabled ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>{notificationsEnabled ? 'ENABLED' : 'DISABLED'}</span>
+                    <input type="checkbox" checked={notificationsEnabled} onChange={(e) => setNotificationsEnabled(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={notifyAutoGuard} onChange={(e) => setNotifyAutoGuard(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Auto-Guard Triggers</span>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={alertOffline} onChange={(e) => setAlertOffline(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-orange)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Device Offline</span>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={notifyLowBattery} onChange={(e) => setNotifyLowBattery(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-orange)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Low Battery (&lt;20%)</span>
+                   </div>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                     <input type="checkbox" checked={notifyWatering} onChange={(e) => setNotifyWatering(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--text-secondary)' }} />
+                     <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Water Start/Stop</span>
+                   </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div>
+                        <label className="form-label">Warning Alarm Sound</label>
+                        <select className="form-input" value={alarmSound} onChange={(e) => setAlarmSound(e.target.value as any)}>
+                          <option value="siren">🚨 Siren (Loud)</option>
+                          <option value="beep">⚠️ Beep (Standard)</option>
+                          <option value="off">🔇 Silent</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">Alarm Repeat</label>
+                        <select className="form-input" value={alarmRepeatInterval} onChange={(e) => setAlarmRepeatInterval(e.target.value as any)}>
+                          <option value="once">Once</option>
+                          <option value="5">Every 5 Seconds</option>
+                          <option value="15">Every 15 Seconds</option>
+                          <option value="30">Every 30 Seconds</option>
+                          <option value="60">Every 60 Seconds</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Alarm Volume</span><span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{Math.round(alarmVolume * 100)}%</span></div>
+                      <input type="range" min="0.1" max="1.0" step="0.1" className="form-input" style={{ padding: 0 }} value={alarmVolume} onChange={(e) => setAlarmVolume(Number(e.target.value))} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <button onClick={() => triggerAlert('Test Alert', 'This is a test of the Boat & RV Guardian alert system.')} className="btn-secondary" style={{ width: '100%', height: '100%', minHeight: '60px', padding: '12px' }}>Test Alert System</button>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Max Flow Speed Limit</span><span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{maxFlowRate} {speedUnit}</span></div>
+                    <input type="range" min="5" max="35" className="form-input" style={{ padding: 0 }} value={maxFlowRate} onChange={(e) => setMaxFlowRate(Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Max Continuous Open</span><span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{maxDuration} Mins</span></div>
+                    <input type="range" min="5" max="120" className="form-input" style={{ padding: 0 }} value={maxDuration} onChange={(e) => setMaxDuration(Number(e.target.value))} />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Hardware Connections</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
