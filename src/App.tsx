@@ -1215,7 +1215,7 @@ export default function App() {
 
             {/* Connection badge */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <span className={`status-dot ${connectionStatus}`}></span>
+              <span className={`status-dot ${connectionStatus === 'connected' ? 'online' : connectionStatus}`}></span>
               <span style={{ fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
                 {connectionStatus === 'mock' ? 'MOCK MODE' : 
                  connectionStatus === 'connected' ? 
@@ -1773,7 +1773,7 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Hardware Connections</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className={`status-dot ${connectionStatus}`}></span>
+                    <span className={`status-dot ${connectionStatus === 'connected' ? 'online' : connectionStatus}`}></span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
                       {connectionStatus === 'mock' ? 'MOCK MODE' : 
                        connectionStatus === 'connected' ? 
