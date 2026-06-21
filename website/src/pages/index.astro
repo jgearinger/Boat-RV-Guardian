@@ -41,9 +41,14 @@ import Layout from '../layouts/Layout.astro';
 	<section id="downloads" class="downloads-section container">
 		<div class="section-header">
 			<h2>Download the App</h2>
-			<p>Boat & Rv Guardian is available on all major platforms. Download the latest release directly from our secure Cloudflare edge network.</p>
+			<p>Boat & Rv Guardian is available on all major platforms. Launch the web dashboard directly, or download the native apps for offline capability.</p>
 		</div>
 		<div class="downloads-grid">
+			<a href="/app/" class="glass-card download-card">
+				<div class="feature-icon">🌐</div>
+				<h3>Web Dashboard</h3>
+				<p>Launch the live browser-based app directly to configure and monitor your system.</p>
+			</a>
 			<a href="https://downloads.boatrvguardian.com/boat-rv-guardian_latest.apk" class="glass-card download-card">
 				<div class="feature-icon">📱</div>
 				<h3>Android APK</h3>
@@ -59,6 +64,14 @@ import Layout from '../layouts/Layout.astro';
 				<h3>Windows App</h3>
 				<p>Native Windows desktop app optimized for low-power onboard PCs.</p>
 			</a>
+		</div>
+		<div style="text-align: center; margin-top: 3rem;">
+			<p style="color: var(--text-muted); font-size: 0.95rem;">
+				Looking for older versions? 
+				<a href="https://github.com/jgearinger/Boat-RV-Guardian/releases" target="_blank" rel="noopener noreferrer" style="color: var(--accent-color); text-decoration: underline; font-weight: 500;">
+					View all releases on GitHub &rarr;
+				</a>
+			</p>
 		</div>
 	</section>
 
