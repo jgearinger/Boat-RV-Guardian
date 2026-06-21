@@ -237,6 +237,35 @@ export default function App() {
   const [targetVolume, setTargetVolume] = useState(() => Number(localStorage.getItem('lt_target_vol') || '0'));
   const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
+  const [isGatewayDiscovering, setIsGatewayDiscovering] = useState(false);
+  const [gatewayDiscoveryMsg, setGatewayDiscoveryMsg] = useState<string | null>(null);
+
+  const handleGatewayDiscover = async () => {
+    setIsGatewayDiscovering(true);
+    setGatewayDiscoveryMsg('Scanning network... (mDNS + subnet scan)');
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const found: string[] = await invoke('discover_gateway');
+      if (found.length === 0) {
+        setGatewayDiscoveryMsg('No LinkTap gateway found. Try enabling mDNS in the gateway web admin, or enter the IP manually.');
+      } else if (found.length === 1) {
+        setGatewayIp(found[0]);
+        setIsLocalPollingActive(false); // will re-enable when saved
+        setGatewayDiscoveryMsg(`✅ Found gateway at ${found[0]}`);
+        addLog('success', `Gateway auto-discovered at ${found[0]}`);
+      } else {
+        // Multiple found — use first, show all
+        setGatewayIp(found[0]);
+        setIsLocalPollingActive(false);
+        setGatewayDiscoveryMsg(`✅ Found ${found.length} gateways: ${found.join(', ')} — using first.`);
+        addLog('success', `Gateway auto-discovered. Found: ${found.join(', ')}`);
+      }
+    } catch (e: any) {
+      setGatewayDiscoveryMsg(`Discovery failed: ${e?.message || e}`);
+      addLog('danger', `Gateway discovery failed: ${e?.message || e}`);
+    }
+    setIsGatewayDiscovering(false);
+  };
   // --- App State ---
   const [isCommandLoading, setIsCommandLoading] = useState<boolean | 'start' | 'stop'>(false);
   const lastCommandTimeRef = useRef<number>(0);
@@ -1886,7 +1915,32 @@ export default function App() {
                           <button className="btn-secondary" onClick={() => setManualRefresh(Date.now())} style={{ padding: '4px 12px', fontSize: '0.75rem' }}>↻ Refresh</button>
                         </div>
                       </div>
-                      <div><label className="form-label">Gateway Local IP Address</label><input type="text" className="form-input" value={gatewayIp} onChange={(e) => { setGatewayIp(e.target.value); setIsLocalPollingActive(false); }} placeholder="e.g. 192.168.1.100" /></div>
+                      <div>
+                        <label className="form-label">Gateway Local IP Address</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={gatewayIp}
+                            onChange={(e) => { setGatewayIp(e.target.value); setIsLocalPollingActive(false); }}
+                            placeholder="e.g. 192.168.1.100"
+                            style={{ flex: 1 }}
+                          />
+                          <button
+                            className="btn-secondary"
+                            onClick={handleGatewayDiscover}
+                            disabled={isGatewayDiscovering || mockMode}
+                            style={{ whiteSpace: 'nowrap', padding: '8px 12px', fontSize: '0.8rem' }}
+                          >
+                            {isGatewayDiscovering ? '🔍 Scanning...' : '🔍 Auto-Discover'}
+                          </button>
+                        </div>
+                        {gatewayDiscoveryMsg && (
+                          <div style={{ fontSize: '0.75rem', marginTop: '6px', color: gatewayDiscoveryMsg.startsWith('✅') ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
+                            {gatewayDiscoveryMsg}
+                          </div>
+                        )}
+                      </div>
                       
 
                     </div>

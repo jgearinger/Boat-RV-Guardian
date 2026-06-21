@@ -1,7 +1,11 @@
 use std::io::{Read, Write};
-use std::net::{TcpStream, SocketAddr};
+use std::net::{TcpStream, SocketAddr, IpAddr};
 use std::time::Duration;
 use tauri::command;
+
+// ---------------------------------------------------------------------------
+// Existing raw HTTP command (keep as-is — used for all LinkTap API calls)
+// ---------------------------------------------------------------------------
 
 #[command]
 async fn raw_linktap_post(ip: String, payload: String) -> Result<String, String> {
@@ -43,6 +47,174 @@ async fn raw_linktap_post(ip: String, payload: String) -> Result<String, String>
     }
 }
 
+// ---------------------------------------------------------------------------
+// Gateway fingerprint probe — confirms a host is a LinkTap gateway.
+// Uses raw TCP (same pattern as raw_linktap_post) for reliability with
+// embedded HTTP servers that may not be fully HTTP/1.1 compliant.
+// ---------------------------------------------------------------------------
+
+async fn probe_linktap_api(ip: String) -> bool {
+    let addr: SocketAddr = match format!("{}:80", ip).parse() {
+        Ok(a) => a,
+        Err(_) => return false,
+    };
+
+    tokio::task::spawn_blocking(move || -> bool {
+        let mut stream = match TcpStream::connect_timeout(&addr, Duration::from_millis(400)) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+        let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
+        let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+
+        // Minimal probe — cmd:0 is a safe no-op on the LinkTap local API
+        let payload = r#"{"cmd":0}"#;
+        let request = format!(
+            "POST /api.shtml HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+            ip, payload.len(), payload
+        );
+
+        if stream.write_all(request.as_bytes()).is_err() {
+            return false;
+        }
+
+        let mut response = String::new();
+        let _ = stream.read_to_string(&mut response);
+
+        // LinkTap local API always responds with JSON containing "ret" or known fields
+        response.contains("\"ret\"")
+            || response.contains("\"result\"")
+            || response.contains("taplinkerId")
+            || response.contains("gw_id")
+    })
+    .await
+    .unwrap_or(false)
+}
+
+// ---------------------------------------------------------------------------
+// Tier 1: mDNS Discovery
+// Browses _http._tcp.local. for up to `timeout_secs` seconds.
+// Filters candidates by instance name, validates with /api.shtml probe.
+// ---------------------------------------------------------------------------
+
+#[command]
+async fn discover_via_mdns(timeout_secs: u64) -> Result<Vec<String>, String> {
+    use mdns_sd::{ServiceDaemon, ServiceEvent};
+
+    let mdns = ServiceDaemon::new().map_err(|e| format!("mDNS daemon error: {}", e))?;
+    let receiver = mdns
+        .browse("_http._tcp.local.")
+        .map_err(|e| format!("mDNS browse error: {}", e))?;
+
+    let mut candidates: Vec<String> = Vec::new();
+    let deadline = std::time::Instant::now() + Duration::from_secs(timeout_secs.min(10));
+
+    while std::time::Instant::now() < deadline {
+        match receiver.recv_timeout(Duration::from_millis(200)) {
+            Ok(ServiceEvent::ServiceResolved(info)) => {
+                let name = info.get_fullname().to_lowercase();
+                // LinkTap gateway hostnames contain "linktap" or "gw-" prefix
+                let looks_like_linktap = name.contains("linktap")
+                    || name.contains("gw-0")
+                    || name.contains("gw-1")
+                    || name.contains("gw-2");
+
+                if looks_like_linktap {
+                    for addr in info.get_addresses() {
+                        let ip = addr.to_string();
+                        if !candidates.contains(&ip) {
+                            candidates.push(ip);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let _ = mdns.shutdown();
+
+    // Validate candidates with /api.shtml fingerprint to eliminate false positives
+    let mut confirmed = Vec::new();
+    for ip in candidates {
+        if probe_linktap_api(ip.clone()).await {
+            confirmed.push(ip);
+        }
+    }
+
+    Ok(confirmed)
+}
+
+// ---------------------------------------------------------------------------
+// Tier 2: HTTP Subnet Scan
+// Concurrently probes all 254 hosts on the local /24 subnet.
+// Any host responding to /api.shtml with a LinkTap signature is returned.
+// ---------------------------------------------------------------------------
+
+#[command]
+async fn discover_via_subnet_scan() -> Result<Vec<String>, String> {
+    let local_ip = local_ip_address::local_ip()
+        .map_err(|e| format!("Could not determine local IP: {}", e))?;
+
+    let octets = match local_ip {
+        IpAddr::V4(v4) => v4.octets(),
+        IpAddr::V6(_) => return Err("IPv6 networks not supported for subnet scan".into()),
+    };
+
+    let mut handles = Vec::new();
+
+    for host in 1u8..=254 {
+        let ip = format!("{}.{}.{}.{}", octets[0], octets[1], octets[2], host);
+        handles.push(tokio::spawn(async move {
+            if probe_linktap_api(ip.clone()).await {
+                Some(ip)
+            } else {
+                None
+            }
+        }));
+    }
+
+    let mut results = Vec::new();
+    for handle in handles {
+        if let Ok(Some(ip)) = handle.await {
+            results.push(ip);
+        }
+    }
+
+    Ok(results)
+}
+
+// ---------------------------------------------------------------------------
+// Combined: Run mDNS and subnet scan in parallel, merge results.
+// Calling this is the recommended single entry-point from the frontend.
+// ---------------------------------------------------------------------------
+
+#[command]
+async fn discover_gateway() -> Result<Vec<String>, String> {
+    let (mdns_result, scan_result) = tokio::join!(
+        discover_via_mdns(4),
+        discover_via_subnet_scan()
+    );
+
+    let mut combined: Vec<String> = Vec::new();
+
+    for result in [mdns_result, scan_result] {
+        if let Ok(ips) = result {
+            for ip in ips {
+                if !combined.contains(&ip) {
+                    combined.push(ip);
+                }
+            }
+        }
+    }
+
+    Ok(combined)
+}
+
+// ---------------------------------------------------------------------------
+// App entry point
+// ---------------------------------------------------------------------------
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -59,7 +231,12 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![raw_linktap_post])
+        .invoke_handler(tauri::generate_handler![
+            raw_linktap_post,
+            discover_gateway,
+            discover_via_mdns,
+            discover_via_subnet_scan,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
