@@ -2,43 +2,15 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Hardware Setup | Boat & Rv Guardian">
+<Layout title="Documentation | Boat & Rv Guardian">
 	<div class="page-header">
 		<div class="container">
-			<h1>Hardware Setup</h1>
-			<p>The Boat & Rv Guardian software is open-source and free, but it requires specific third-party hardware to function.</p>
+			<h1>Documentation</h1>
+			<p>Complete guides for installing and configuring your Boat & Rv Guardian ecosystem.</p>
 		</div>
 	</div>
 
 	<div class="container main-content">
-		
-		<div class="hardware-grid">
-			<div class="glass-card">
-				<div class="card-header">
-					<h2>1. The LinkTap System</h2>
-					<span class="badge">Required</span>
-				</div>
-				<p>LinkTap provides the smart valve and wireless gateway needed to control your water flow.</p>
-				<ul>
-					<li><strong>Gateway:</strong> LinkTap GW-01 or GW-02. This connects to your RV/Boat router.</li>
-					<li><strong>Valve:</strong> LinkTap G2S (Must include the built-in flow meter for volume limits).</li>
-				</ul>
-				<p class="note"><strong>Why LinkTap?</strong> It offers a Local API. This means our dashboard can control the valve directly over your local Wi-Fi, without needing an internet connection. Essential for remote campsites.</p>
-			</div>
-
-			<div class="glass-card">
-				<div class="card-header">
-					<h2>2. Shelly Wi-Fi Sensors</h2>
-					<span class="badge">Required</span>
-				</div>
-				<p>Shelly provides reliable, locally-controllable sensors that don't force you into a proprietary cloud.</p>
-				<ul>
-					<li><strong>Leak Detection:</strong> Shelly Flood (Gen4 recommended). Place these under sinks and water heaters.</li>
-					<li><strong>12V Monitoring:</strong> Shelly Plus Uni. Connect this to your 12V house battery system to monitor voltage and control relays.</li>
-				</ul>
-				<p class="note"><strong>Why Shelly?</strong> They support sending custom HTTP Webhooks directly from the device, allowing us to route alerts to our Cloudflare workers instantly.</p>
-			</div>
-		</div>
 
 		<!-- Physical Setup Guide -->
 		<section class="installation-guide">

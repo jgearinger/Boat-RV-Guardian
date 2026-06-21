@@ -1,0 +1,107 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Supported Components | Boat & Rv Guardian">
+	<div class="page-header">
+		<div class="container">
+			<h1>Supported Components</h1>
+			<p>To use all features of the Guardian app, specific LinkTap hardware is required.</p>
+            <p class="note" style="display:inline-block; margin-top:1rem;">(Note: Purchasing through the affiliate links below helps support the open-source project!)</p>
+		</div>
+	</div>
+
+	<div class="container main-content">
+		<div class="components-grid">
+			<div class="glass-card component-card">
+				<div class="feature-icon">💧</div>
+				<h2>LinkTap G2S Smart Valve</h2>
+				<p>Must be the G2S (or newer G1S/G4S) model because it includes a built-in flow meter to track exact gallons used. Older models cannot perform volume-based shutoffs.</p>
+				<a href="#" class="btn btn-primary" style="margin-top: 1rem; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+			<div class="glass-card component-card">
+				<div class="feature-icon">📡</div>
+				<h2>LinkTap Gateway</h2>
+				<p>Required to bridge your home Wi-Fi network to the Valve via Zigbee. It also provides the essential Local API endpoints for instant app communication.</p>
+				<a href="#" class="btn btn-primary" style="margin-top: 1rem; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+			<div class="glass-card component-card">
+				<div class="feature-icon">🔧</div>
+				<h2>Water Pressure Regulator</h2>
+				<p>Highly recommended. Always install this standard regulator after the LinkTap valve to ensure the water pressure entering your RV or Boat is safely reduced (40-50 PSI).</p>
+				<a href="#" class="btn btn-primary" style="margin-top: 1rem; display: inline-block;">Buy on Amazon</a>
+			</div>
+		</div>
+	</div>
+</Layout>
+
+<style>
+	.page-header {
+		background: rgba(14, 165, 233, 0.05);
+		border-bottom: 1px solid var(--surface-border);
+		padding: 4rem 0;
+		margin-bottom: 4rem;
+		text-align: center;
+	}
+
+	.page-header h1 {
+		font-size: 3rem;
+		margin-bottom: 1rem;
+		color: #fff;
+	}
+
+	.page-header p {
+		font-size: 1.2rem;
+		color: var(--text-muted);
+		max-width: 600px;
+		margin: 0 auto;
+	}
+
+	.components-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+		gap: 2rem;
+		margin-bottom: 4rem;
+	}
+
+	.component-card {
+		padding: 2.5rem 2rem;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.component-card h2 {
+		font-size: 1.5rem;
+		margin-bottom: 1rem;
+		color: #fff;
+	}
+
+	.component-card p {
+		color: var(--text-muted);
+		flex-grow: 1;
+		line-height: 1.6;
+	}
+
+    .feature-icon {
+		font-size: 2.5rem;
+		margin-bottom: 1.5rem;
+		background: var(--surface-color);
+		width: 60px;
+		height: 60px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 12px;
+		border: 1px solid var(--surface-border);
+	}
+
+	.note {
+		background: rgba(255, 255, 255, 0.05);
+		padding: 0.5rem 1rem;
+		border-left: 4px solid var(--accent-color);
+		border-radius: 0 4px 4px 0;
+		font-size: 0.95rem;
+	}
+</style>
