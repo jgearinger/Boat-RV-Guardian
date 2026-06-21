@@ -5,24 +5,44 @@ import Layout from '../layouts/Layout.astro';
 <Layout title="Features | Boat & RV Guardian">
 	<div class="page-header">
 		<div class="container">
-			<h1>Platform Features</h1>
-			<p>A comprehensive look at what makes the Guardian system the most reliable choice for your vessel or RV.</p>
+			<h1>The Value of Monitoring</h1>
+			<p>A closer look at how the Boat & RV Guardian ecosystem protects your rig from catastrophic water damage and dead batteries.</p>
 		</div>
 	</div>
 
 	<div class="container main-content">
 		
-		<!-- 1. Water Shutoff -->
+		<!-- 1. Power Monitoring -->
 		<section class="feature-block">
 			<div class="content">
+				<div class="icon-badge">⚡</div>
+				<h2>12V Battery & Shore Power Health</h2>
+				<p>Modern RVs and Boats rely heavily on their 12V house systems. We provide deep insights into your power health so you never wake up to a dead battery or a thawed fridge.</p>
+				<ul>
+					<li><strong>Precision Voltage Tracking:</strong> Graph your 12V house and starter battery status over time to prevent damaging deep discharges.</li>
+					<li><strong>Shore Power Status:</strong> Know instantly if the marina or campsite loses AC power.</li>
+					<li><strong>Temperature & Humidity:</strong> Monitor the climate inside your rig to prevent mold growth in the summer or freezing pipes in the winter.</li>
+					<li><strong>Hardware Integration:</strong> Uses the Shelly Uni and Shelly Plus Add-on for reliable, low-power telemetry.</li>
+				</ul>
+			</div>
+			<div class="visual glass-card">
+				<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">🔋</div>
+				<h3 style="text-align: center; margin-top: 1rem;">Keep the Lights On</h3>
+				<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Get notified before your batteries drop below safe voltage limits.</p>
+			</div>
+		</section>
+
+		<!-- 2. Water Shutoff -->
+		<section class="feature-block row-reverse">
+			<div class="content">
 				<div class="icon-badge">💧</div>
-				<h2>Intelligent Water Shutoff</h2>
+				<h2>Smart Water Shutoff</h2>
 				<p>Never worry about coming back to a flooded cabin. The Guardian system integrates deeply with LinkTap smart water valves to provide unparalleled protection:</p>
 				<ul>
 					<li><strong>Real-time Flow Metering:</strong> See exactly how many liters/gallons are moving through your plumbing at any given second.</li>
 					<li><strong>Volume Limits:</strong> Set strict limits on water usage. If flow exceeds the limit (e.g., a busted pipe), the valve closes instantly.</li>
-					<li><strong>Remote Control:</strong> Open or close your main water line from anywhere in the world using our secure dashboard.</li>
-					<li><strong>Auto-Purge Cycles:</strong> Automatically cycle water periodically to keep your holding tanks fresh and prevent stagnant lines.</li>
+					<li><strong>Remote Control:</strong> Open or close your main water line from anywhere in the world.</li>
+					<li><strong>Hardware Integration:</strong> Uses the LinkTap Gateway for instant local network control without cloud latency.</li>
 				</ul>
 			</div>
 			<div class="visual glass-card">
@@ -30,48 +50,8 @@ import Layout from '../layouts/Layout.astro';
 			</div>
 		</section>
 
-		<!-- 2. Cloud Alerts -->
-		<section class="feature-block row-reverse">
-			<div class="content">
-				<div class="icon-badge">🔔</div>
-				<h2>Mission-Critical Cloud Alerts</h2>
-				<p>We use a highly-available, serverless architecture to ensure your alerts are never missed, even if your vehicle loses power.</p>
-				<ul>
-					<li><strong>Direct Webhook Receivers:</strong> Your local sensors (like Shelly Floods) bypass fragile hubs and communicate directly with our edge network.</li>
-					<li><strong>Instant Push Notifications:</strong> Get alerted on your iOS or Android device the second a water leak or power failure is detected.</li>
-					<li><strong>Automated Emergency Actions:</strong> When the system receives a critical alert, it can automatically trigger the LinkTap valve to close over the cloud, minimizing damage while you're away.</li>
-					<li><strong>Custom Alert Rules:</strong> Configure which sensors trigger notifications, SMS, or automatic valve shutoffs based on your exact preferences.</li>
-				</ul>
-			</div>
-			<div class="visual glass-card">
-				<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">📡</div>
-				<h3 style="text-align: center; margin-top: 1rem;">Edge Network Routing</h3>
-				<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Powered by Cloudflare Workers for 99.99% uptime.</p>
-			</div>
-		</section>
-
-		<!-- 3. Power Monitoring -->
+		<!-- 3. Local First Architecture -->
 		<section class="feature-block">
-			<div class="content">
-				<div class="icon-badge">⚡</div>
-				<h2>12V Battery & Environment Monitoring</h2>
-				<p>Modern RVs and Boats rely heavily on their 12V house systems. We provide deep insights into your power health so you never wake up to a dead battery.</p>
-				<ul>
-					<li><strong>Precision Voltage Tracking:</strong> Graph your 12V house and starter battery status over time to prevent damaging deep discharges.</li>
-					<li><strong>Shore Power Status:</strong> Know instantly if the marina or campsite loses power, protecting your fridge and climate systems.</li>
-					<li><strong>Temperature & Humidity:</strong> Monitor the climate inside your rig to prevent mold growth in the summer or freezing pipes in the winter.</li>
-					<li><strong>Solar Input Tracking:</strong> Track when your panels are charging the system and measure net gain against your daily usage.</li>
-				</ul>
-			</div>
-			<div class="visual glass-card">
-				<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">🔋</div>
-				<h3 style="text-align: center; margin-top: 1rem;">Sensor Aggregation</h3>
-				<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Integrates with Shelly Uni for granular telemetry.</p>
-			</div>
-		</section>
-
-		<!-- 4. Local First Architecture -->
-		<section class="feature-block row-reverse">
 			<div class="content">
 				<div class="icon-badge">🏠</div>
 				<h2>Local-First Architecture</h2>
@@ -89,16 +69,35 @@ import Layout from '../layouts/Layout.astro';
 			</div>
 		</section>
 
+		<!-- 4. Cloud Alerts -->
+		<section class="feature-block row-reverse">
+			<div class="content">
+				<div class="icon-badge">🚨</div>
+				<h2>Bilge & High-Water Alarms</h2>
+				<p>Using Shelly Flood sensors and Cloudflare Workers, our webhook receiver guarantees you get a push notification the second water is detected.</p>
+				<ul>
+					<li><strong>Direct Webhook Receivers:</strong> Your local sensors bypass fragile hubs and communicate directly with our edge network.</li>
+					<li><strong>Instant Push Notifications:</strong> Get alerted on your iOS or Android device the second a water leak or power failure is detected.</li>
+					<li><strong>Automated Emergency Actions:</strong> When the system receives a critical alert, it can automatically trigger the LinkTap valve to close over the cloud, minimizing damage while you're away.</li>
+				</ul>
+			</div>
+			<div class="visual glass-card">
+				<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">📡</div>
+				<h3 style="text-align: center; margin-top: 1rem;">Edge Network Routing</h3>
+				<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Powered by Cloudflare Workers for 99.99% uptime.</p>
+			</div>
+		</section>
+
 		<!-- 5. Cross-Platform Native Apps -->
 		<section class="feature-block">
 			<div class="content">
-				<div class="icon-badge">📱</div>
-				<h2>Cross-Platform Native Experience</h2>
-				<p>We believe your dashboard should be accessible wherever you are, on whatever device you prefer.</p>
+				<div class="icon-badge">💻</div>
+				<h2>Pro-Bono Open Source Software</h2>
+				<p>We believe the software should be free. You only pay for the off-the-shelf hardware you choose to install.</p>
 				<ul>
 					<li><strong>Desktop Native (Tauri):</strong> Install a lightweight, blazing-fast app directly on your macOS or Windows machine. Perfect for the nav station.</li>
-					<li><strong>Mobile Native (Capacitor):</strong> A polished, responsive iOS and Android app that supports native push notifications and background syncing.</li>
-					<li><strong>Progressive Web App:</strong> Access your dashboard from any web browser without installing anything at all.</li>
+					<li><strong>Mobile Native (Capacitor):</strong> Sideload the Android APK for a polished mobile experience with native push notifications.</li>
+					<li><strong>Open Source:</strong> Licensed under GPL-3.0. Inspect the code, build it yourself, or contribute back to the community on GitHub.</li>
 				</ul>
 			</div>
 			<div class="visual glass-card">

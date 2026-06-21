@@ -1,7 +1,9 @@
 {
   "name": "website",
   "type": "module",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "license": "GPL-3.0",
+  "description": "Marketing website for Boat & RV Guardian.",
   "engines": {
     "node": ">=22.12.0"
   },
