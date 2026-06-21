@@ -99,9 +99,6 @@ export default function App() {
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || '');
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '5'));
   const effectiveInterval = refreshInterval;
-  // When only cloud is active (no local), pin poll interval to 31s to respect the API rate limit.
-  // When local is active, use the user's slider value for fast real-time telemetry.
-  const pollInterval = (isLocalPollingActive && gatewayIp) ? effectiveInterval : 31;
   const hasCustomSettings = () => {
     const gw = localStorage.getItem('lt_gateway_id');
     const dev = localStorage.getItem('lt_device_id');
@@ -122,6 +119,10 @@ export default function App() {
     if (hasCustomSettings()) return true;
     return false;
   });
+
+  // Pin to 31s when cloud-only (local disconnected) to respect the API rate limit.
+  // Use the slider value when local is active for fast real-time telemetry.
+  const pollInterval = (isLocalPollingActive && gatewayIp) ? effectiveInterval : 31;
 
   const [mockMode, setMockMode] = useState(() => {
     const stored = localStorage.getItem('lt_mock');
