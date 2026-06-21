@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Setup from './Setup';
+import { useCloudConfig } from '../hooks/useCloudConfig';
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
 
 const invokeTauri = async (cmd: string, args?: any) => {
@@ -108,6 +109,17 @@ export default function App() {
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || '');
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '5'));
   const effectiveInterval = refreshInterval;
+
+  const { config } = useCloudConfig();
+  useEffect(() => {
+    if (config?.linktap) {
+      if (config.linktap.username) setCloudUsername(config.linktap.username);
+      if (config.linktap.apiKey) setCloudApiKey(config.linktap.apiKey);
+      if (config.linktap.gatewayId) setGatewayId(config.linktap.gatewayId);
+      if (config.linktap.taplinkerId) setDeviceId(config.linktap.taplinkerId);
+    }
+  }, [config?.linktap]);
+
   const hasCustomSettings = () => {
     const gw = localStorage.getItem('lt_gateway_id');
     const dev = localStorage.getItem('lt_device_id');

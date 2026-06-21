@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { auth, signOut } from '../services/firebase';
 import Login from './Login';
+import { useCloudConfig, LinkTapConfig } from '../hooks/useCloudConfig';
 
-const APP_VERSION = '1.0.26';
+const APP_VERSION = '1.0.27';
 
 export default function Settings({ user }: { user: any }) {
   const [showLogin, setShowLogin] = useState(false);
@@ -17,6 +18,27 @@ export default function Settings({ user }: { user: any }) {
   const [normalRunDaily, setNormalRunDaily] = useState(() => localStorage.getItem('lt_nr_daily') === 'true');
   const [normalRunVolume, setNormalRunVolume] = useState(() => Number(localStorage.getItem('lt_nr_vol') || '10'));
   const [autoRestartNormal, setAutoRestartNormal] = useState(() => localStorage.getItem('lt_nr_auto') === 'true');
+
+  // Cloud Sync State
+  const { config, updateConfig } = useCloudConfig();
+  const [linkTapState, setLinkTapState] = useState<LinkTapConfig>({ username: '', apiKey: '', gatewayId: '', taplinkerId: '' });
+  const [cloudSaving, setCloudSaving] = useState(false);
+
+  useEffect(() => {
+    if (config?.linktap) {
+      setLinkTapState(config.linktap);
+    }
+  }, [config?.linktap]);
+
+  const handleSaveLinkTap = async () => {
+    setCloudSaving(true);
+    try {
+      await updateConfig({ linktap: linkTapState });
+    } catch (e: any) {
+      console.error(e);
+    }
+    setCloudSaving(false);
+  };
 
   // Sync to LocalStorage
   useEffect(() => {
@@ -110,6 +132,38 @@ export default function Settings({ user }: { user: any }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
           <input type="checkbox" checked={autoRestartNormal} onChange={(e) => setAutoRestartNormal(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Auto-restart profile automatically when time expires</span>
+        </div>
+      </div>
+
+      <div className="glass-card">
+        <h3 style={{ marginTop: 0, color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', marginBottom: '16px' }}>Link-Tap Hardware Config</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+          <div>
+            <label className="form-label">Username</label>
+            <input type="text" className="form-input" value={linkTapState.username} onChange={(e) => setLinkTapState({...linkTapState, username: e.target.value})} placeholder="e.g. jgearinger" />
+          </div>
+          <div>
+            <label className="form-label">API Key</label>
+            <input type="password" className="form-input" value={linkTapState.apiKey} onChange={(e) => setLinkTapState({...linkTapState, apiKey: e.target.value})} placeholder="Found in your Link-Tap Account Settings" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label className="form-label">Gateway ID</label>
+              <input type="text" className="form-input" value={linkTapState.gatewayId} onChange={(e) => setLinkTapState({...linkTapState, gatewayId: e.target.value})} placeholder="16 character hex" />
+            </div>
+            <div>
+              <label className="form-label">Taplinker ID</label>
+              <input type="text" className="form-input" value={linkTapState.taplinkerId} onChange={(e) => setLinkTapState({...linkTapState, taplinkerId: e.target.value})} placeholder="16 character hex" />
+            </div>
+          </div>
+          <button 
+            className="btn-primary" 
+            onClick={handleSaveLinkTap} 
+            disabled={!user || cloudSaving}
+            style={{ marginTop: '8px' }}
+          >
+            {cloudSaving ? 'Saving to Firebase...' : (!user ? 'Login Required to Save' : 'Save Config to Cloud')}
+          </button>
         </div>
       </div>
 
