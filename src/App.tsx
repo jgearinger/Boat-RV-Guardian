@@ -732,10 +732,36 @@ export default function App() {
 
         // If targetVolume is 0 (app launched mid-cycle), try to extract it from the API
         const apiTargetVol = Number(data.target_volume ?? data.volume_limit ?? data.limit ?? data.target_vol ?? (data.watering ? data.watering.vol : 0));
-        if (apiTargetVol > 0 && targetVolume === 0) setTargetVolume(apiTargetVol);
+        if (apiTargetVol > 0 && stateRef.current.targetVolume === 0) setTargetVolume(apiTargetVol);
         
         const apiTargetDur = Number(data.target_duration ?? data.totalDuration ?? data.total ?? (data.watering ? data.watering.duration : 0));
-        if (apiTargetDur > 0 && targetDuration === 0) setTargetDuration(apiTargetDur * 60); // assume minutes from API
+        if (apiTargetDur > 0 && stateRef.current.targetDuration === 0) setTargetDuration(apiTargetDur * 60); // assume minutes from API
+
+        // If we are using Local API (meaning usedCloud is false) and we just discovered watering is active, 
+        // the Local API often does not provide the duration/volume limits.
+        // We can asynchronously poll the Cloud API specifically for this limit data to populate the UI.
+        if (newIsWatering && stateRef.current.targetVolume === 0 && stateRef.current.targetDuration === 0 && !usedCloud && isCloudPollingActive && cloudUsername && cloudApiKey) {
+            if (!(window as any).fetchingLimits) {
+                (window as any).fetchingLimits = true;
+                unifiedFetch('https://www.link-tap.com/api/getWateringStatus', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey, taplinkerId: deviceId })
+                }).then(r => r.json()).then(cloudData => {
+                    (window as any).fetchingLimits = false;
+                    if (cloudData.result !== 'error') {
+                        const st = cloudData.status || cloudData;
+                        const cVol = Number(st.limit || st.target_vol || (st.watering ? st.watering.vol : 0) || 0);
+                        const cDur = Number(st.totalDuration || st.total || (st.watering ? st.watering.duration : 0) || 0);
+                        if (cVol > 0 && stateRef.current.targetVolume === 0) setTargetVolume(cVol);
+                        if (cDur > 0 && stateRef.current.targetDuration === 0) setTargetDuration(cDur * 60);
+                    }
+                }).catch(e => {
+                    (window as any).fetchingLimits = false;
+                    console.warn('Background cloud fetch for limits failed', e);
+                });
+            }
+        }
 
         const currentVolume = Number(data.volume ?? data.vol ?? 0);
         
