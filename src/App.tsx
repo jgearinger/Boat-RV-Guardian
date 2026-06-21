@@ -9,7 +9,7 @@ const invokeTauri = async (cmd: string, args?: any) => {
   throw new Error("Tauri API not available");
 };
 
-const APP_VERSION = '1.0.25';
+const APP_VERSION = '1.0.26';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST' && !url.startsWith('https://')) {
@@ -248,7 +248,7 @@ export default function App() {
     setIsGatewayDiscovering(true);
     setGatewayDiscoveryMsg('Scanning network... (mDNS + subnet scan)');
     try {
-      const found: string[] = await invokeTauri('discover_gateway');
+      const found = await invokeTauri('discover_gateway') as string[];
       if (found.length === 0) {
         setGatewayDiscoveryMsg('No LinkTap gateway found. Try enabling mDNS in the gateway web admin, or enter the IP manually.');
       } else if (found.length === 1) {
@@ -546,10 +546,10 @@ export default function App() {
   }, [isWatering, notifyWatering]);
 
   const commandersRef = useRef({ start: null as any, stop: null as any });
-  const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory });
+  const stateRef = useRef({ isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory, targetVolume, targetDuration });
   useEffect(() => {
-    stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory };
-  }, [isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory]);
+    stateRef.current = { isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory, targetVolume, targetDuration };
+  }, [isWatering, remainDuration, speed, autoRestartNormal, normalRunDaily, normalRunHours, normalRunMinutes, normalRunVolume, unitSystem, enableHistory, targetVolume, targetDuration]);
 
   // --- Real-time Polling Logic ---
   useEffect(() => {

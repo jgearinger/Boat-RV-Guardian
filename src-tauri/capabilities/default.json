@@ -8,6 +8,8 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
+    "notification:default",
+    "notification:allow-is-permission-granted",
     {
       "identifier": "http:default",
       "allow": [{ "url": "http://*/*" }, { "url": "https://*/*" }]
