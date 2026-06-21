@@ -99,6 +99,9 @@ export default function App() {
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem('lt_device_id') || '');
   const [refreshInterval, setRefreshInterval] = useState(() => Number(localStorage.getItem('lt_refresh') || '5'));
   const effectiveInterval = refreshInterval;
+  // When only cloud is active (no local), pin poll interval to 31s to respect the API rate limit.
+  // When local is active, use the user's slider value for fast real-time telemetry.
+  const pollInterval = (isLocalPollingActive && gatewayIp) ? effectiveInterval : 31;
   const hasCustomSettings = () => {
     const gw = localStorage.getItem('lt_gateway_id');
     const dev = localStorage.getItem('lt_device_id');
@@ -863,13 +866,13 @@ export default function App() {
     };
 
     const timeSinceLastPoll = Date.now() - lastPollTimeRef.current;
-    if (timeSinceLastPoll >= effectiveInterval * 1000 - 1000 || Date.now() - manualRefresh < 1000 || lastPollTimeRef.current === 0) {
+    if (timeSinceLastPoll >= pollInterval * 1000 - 1000 || Date.now() - manualRefresh < 1000 || lastPollTimeRef.current === 0) {
       poll();
     }
     
-    const timer = setInterval(poll, effectiveInterval * 1000);
+    const timer = setInterval(poll, pollInterval * 1000);
     return () => clearInterval(timer);
-  }, [gatewayIp, gatewayId, deviceId, isCloudPollingActive, isLocalPollingActive, refreshInterval, effectiveInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
+  }, [gatewayIp, gatewayId, deviceId, isCloudPollingActive, isLocalPollingActive, refreshInterval, effectiveInterval, pollInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
 
   // --- API Action Commanders ---
   
@@ -1347,7 +1350,7 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Real-Time Flow Analysis</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Data refreshed every {effectiveInterval}s • Last update: {lastUpdated}</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Data refreshed every {isLocalPollingActive && gatewayIp ? `${effectiveInterval}s (local)` : '31s (cloud)'} • Last update: {lastUpdated}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>VALVE STATUS</span>
@@ -2021,7 +2024,14 @@ export default function App() {
                   )}
                 </div>
                 
-                <div style={{ marginTop: '8px' }}><label className="form-label">Local Polling Rate: {effectiveInterval}s</label><input type="range" min="2" max="30" className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} /></div>
+                <div style={{ marginTop: '8px' }}>
+                  <label className="form-label">
+                    {isLocalPollingActive && gatewayIp
+                      ? `Local Polling Rate: ${effectiveInterval}s`
+                      : `Local Polling Rate: ${effectiveInterval}s (Cloud pinned at 31s)`}
+                  </label>
+                  <input type="range" min="2" max="30" className="form-input" style={{ padding: 0 }} value={effectiveInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} />
+                </div>
 
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '12px 0' }}></div>
 
