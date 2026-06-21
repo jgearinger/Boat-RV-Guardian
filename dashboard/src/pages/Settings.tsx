@@ -21,7 +21,12 @@ export default function Settings({ user }: { user: any }) {
 
   // Cloud Sync State
   const { config, updateConfig } = useCloudConfig();
-  const [linkTapState, setLinkTapState] = useState<LinkTapConfig>({ username: '', apiKey: '', gatewayId: '', taplinkerId: '' });
+  const [linkTapState, setLinkTapState] = useState<LinkTapConfig>(() => ({ 
+    username: localStorage.getItem('lt_cloud_user') || '', 
+    apiKey: localStorage.getItem('lt_cloud_key') || '', 
+    gatewayId: localStorage.getItem('lt_gateway_id') || '', 
+    taplinkerId: localStorage.getItem('lt_device_id') || '' 
+  }));
   const [cloudSaving, setCloudSaving] = useState(false);
 
   useEffect(() => {
@@ -29,6 +34,27 @@ export default function Settings({ user }: { user: any }) {
       setLinkTapState(config.linktap);
     }
   }, [config?.linktap]);
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setUnitSystem(localStorage.getItem('lt_unit') as 'metric' | 'imperial' || 'imperial');
+      setTimeZone(localStorage.getItem('lt_tz') || ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'));
+      setVesselNickname(localStorage.getItem('lt_vessel_name') || '');
+      setNormalRunHours(Number(localStorage.getItem('lt_nr_hrs') || '0'));
+      setNormalRunMinutes(Number(localStorage.getItem('lt_nr_mins') || '0'));
+      setNormalRunDaily(localStorage.getItem('lt_nr_daily') === 'true');
+      setNormalRunVolume(Number(localStorage.getItem('lt_nr_vol') || '10'));
+      setAutoRestartNormal(localStorage.getItem('lt_nr_auto') === 'true');
+      setLinkTapState({
+        username: localStorage.getItem('lt_cloud_user') || '',
+        apiKey: localStorage.getItem('lt_cloud_key') || '',
+        gatewayId: localStorage.getItem('lt_gateway_id') || '',
+        taplinkerId: localStorage.getItem('lt_device_id') || ''
+      });
+    };
+    window.addEventListener('settings_updated', handleSettingsUpdate);
+    return () => window.removeEventListener('settings_updated', handleSettingsUpdate);
+  }, []);
 
   const handleSaveLinkTap = async () => {
     setCloudSaving(true);
@@ -50,9 +76,14 @@ export default function Settings({ user }: { user: any }) {
     localStorage.setItem('lt_nr_daily', normalRunDaily.toString());
     localStorage.setItem('lt_nr_vol', normalRunVolume.toString());
     localStorage.setItem('lt_nr_auto', autoRestartNormal.toString());
+    
+    localStorage.setItem('lt_cloud_user', linkTapState.username);
+    localStorage.setItem('lt_cloud_key', linkTapState.apiKey);
+    localStorage.setItem('lt_gateway_id', linkTapState.gatewayId);
+    localStorage.setItem('lt_device_id', linkTapState.taplinkerId);
 
     window.dispatchEvent(new Event('settings_updated'));
-  }, [vesselNickname, unitSystem, timeZone, normalRunHours, normalRunMinutes, normalRunDaily, normalRunVolume, autoRestartNormal]);
+  }, [vesselNickname, unitSystem, timeZone, normalRunHours, normalRunMinutes, normalRunDaily, normalRunVolume, autoRestartNormal, linkTapState]);
 
   const volUnit = unitSystem === 'imperial' ? 'Gallons' : 'Liters';
 

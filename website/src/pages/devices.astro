@@ -1,0 +1,411 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Supported Devices | Boat & Rv Guardian">
+	<div class="page-header">
+		<div class="container">
+			<h1>Supported Devices</h1>
+			<p>To use all features of the Boat & Rv Guardian app, specific LinkTap and Shelly hardware is recommended.</p>
+			<p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 1rem;">(Note: Purchasing through the affiliate links below helps support the open-source project.)</p>
+		</div>
+	</div>
+
+	<div class="container main-content">
+		<div class="devices-grid">
+			
+			<!-- Device 1: G2S Smart Valve -->
+			<div class="glass-card device-card">
+				<div class="device-image-container img-bg-light">
+					<img src="/smart_valve.png" alt="LinkTap G2S Smart Valve" class="device-image" />
+				</div>
+				<span class="category-badge badge-water">Water Hookup Control</span>
+				<h2>LinkTap G2S Smart Valve</h2>
+				<p>Must be the G2S (or newer G1S/G4S) model because it includes a built-in flow meter to track exact gallons used. Older models cannot perform volume-based shutoffs.</p>
+				<a href="#" class="btn btn-primary" style="margin-top: auto; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+			<!-- Device 2: LinkTap Gateway -->
+			<div class="glass-card device-card">
+				<div class="device-image-container img-bg-light">
+					<img src="/wifi_gateway.png" alt="LinkTap Gateway" class="device-image" />
+				</div>
+				<span class="category-badge badge-water">Water Hookup Control</span>
+				<h2>LinkTap Gateway</h2>
+				<p>Required to bridge your home Wi-Fi network to the Valve via Zigbee. It also provides the essential Local API endpoints for instant app communication.</p>
+				<a href="#" class="btn btn-primary" style="margin-top: auto; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+			<!-- Device 3: Water Pressure Regulator -->
+			<div class="glass-card device-card">
+				<div class="device-image-container img-bg-light">
+					<img src="/pressure_regulator.png" alt="Water Pressure Regulator" class="device-image" />
+				</div>
+				<span class="category-badge badge-water">Water Hookup Control</span>
+				<h2>Water Pressure Regulator</h2>
+				<p>Highly recommended. Always install this standard regulator after the LinkTap valve to ensure the water pressure entering your RV or Boat is safely reduced (40-50 PSI).</p>
+				<a href="#" class="btn btn-primary" style="margin-top: auto; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+			<!-- Device 4: Shelly Flood Sensor -->
+			<div class="glass-card device-card">
+				<div class="device-image-container img-bg-dark">
+					<img src="/shelly_flood.png" alt="Shelly Flood Sensor" class="device-image" />
+				</div>
+				<span class="category-badge badge-flood">High Water / Flood Alarm</span>
+				<h2>Shelly Flood Sensor</h2>
+				<p>A low-cost, battery-powered Wi-Fi water sensor. Place it in bilges, sumps, or under sinks to detect leaks instantly and trigger alarms.</p>
+				<a href="#" class="btn btn-primary" style="margin-top: auto; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+			<!-- Device 5: Shelly Plus Uni -->
+			<div class="glass-card device-card">
+				<div class="device-image-container img-bg-dark">
+					<img src="/shelly_plus_uni.png" alt="Shelly Plus Uni" class="device-image" />
+				</div>
+				<span class="category-badge badge-battery">Battery Voltage</span>
+				<h2>Shelly Plus Uni</h2>
+				<p>Wires directly into your 12V house and starter battery systems to provide constant, precision voltage monitoring and status detection.</p>
+				<a href="#" class="btn btn-primary" style="margin-top: auto; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+			<!-- Device 6: Inline Fused Wiring Harness -->
+			<div class="glass-card device-card">
+				<div class="device-image-container img-bg-light">
+					<img src="/fused_harness.png" alt="Inline Fused Wiring Harness" class="device-image" />
+				</div>
+				<span class="category-badge badge-battery">Battery Voltage</span>
+				<h2>Inline Fused Wiring Harness</h2>
+				<p>Crucial for safety. Use this fused ring-terminal connection to safely wire the Shelly Plus Uni directly to your battery terminals, protecting the circuit with an inline fuse.</p>
+				<a href="https://amzn.to/4ezRPpz" class="btn btn-primary" style="margin-top: auto; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+			<!-- Device 7: Shelly PM Mini Gen3 -->
+			<div class="glass-card device-card">
+				<div class="device-image-container img-bg-dark">
+					<img src="/shelly_pm_mini.png" alt="Shelly PM Mini Gen3" class="device-image" />
+				</div>
+				<span class="category-badge badge-shorepower">Shorepower Monitoring</span>
+				<h2>Shelly PM Mini Gen3</h2>
+				<p>A compact smart power meter that measures AC line voltage and power consumption. Connect it to your shore power line to monitor camp/marina electricity and receive instant black-out notifications.</p>
+				<a href="#" class="btn btn-primary" style="margin-top: auto; display: inline-block;">Buy on Amazon</a>
+			</div>
+
+		</div>
+
+		<!-- Hardware Solutions Section -->
+		<section class="hardware-solutions" style="margin-top: 6rem; border-top: 1px solid var(--surface-border); padding-top: 4rem;">
+			<div class="section-header" style="text-align: center; margin-bottom: 5rem;">
+				<h2 style="font-size: 2.5rem; margin-bottom: 1rem;">Hardware Solutions</h2>
+				<p style="color: var(--text-muted); font-size: 1.2rem; max-width: 700px; margin: 0 auto;">A breakdown of the low-cost, off-the-shelf devices we use and the catastrophic risks they prevent.</p>
+			</div>
+
+			<!-- 1. LinkTap Flow Tool -->
+			<section class="feature-block">
+				<div class="content">
+					<div class="icon-badge">💧</div>
+					<h2>The Flow Tool (LinkTap)</h2>
+					<h3 class="risk-title">The Risk: Sinking at the Dock</h3>
+					<p>When you're hooked up to city water at a marina or RV park, a burst pipe or failed fitting means an endless supply of pressurized water flooding your rig. For boats, this can overwhelm the bilge pump and sink the vessel at the dock.</p>
+					
+					<h3 class="protection-title">The Protection</h3>
+					<p>The LinkTap Gateway and Valve act as an intelligent Flow Tool. By monitoring real-time gallons-per-minute, the system instantly detects abnormal volume (like a burst pipe) and <strong>automatically shuts off the physical water supply</strong> before catastrophic damage occurs.</p>
+					<ul>
+						<li>Detects leaks based on flow rate anomalies.</li>
+						<li>Physical, motorized shut-off valve at the spigot.</li>
+						<li>Integrates via Local API for zero-latency response.</li>
+					</ul>
+				</div>
+				<div class="visual glass-card">
+					<div class="mockup-placeholder" style="background-image: url('/mobile-alert.png'); background-size: cover; background-position: center; min-height: 400px; border-radius: 8px;"></div>
+				</div>
+			</section>
+
+			<!-- 2. Shelly Uni -->
+			<section class="feature-block row-reverse">
+				<div class="content">
+					<div class="icon-badge">⚡</div>
+					<h2>Power Telemetry (Shelly Uni)</h2>
+					<h3 class="risk-title">The Risk: Failed Bilge Pumps</h3>
+					<p>A dead 12V house battery doesn't just mean your fridge thaws—it means your automatic bilge pump loses power. A slow, undetected leak will eventually sink a boat if the bilge pump doesn't have the battery juice to keep up.</p>
+					
+					<h3 class="protection-title">The Protection</h3>
+					<p>The low-cost Shelly Uni wires directly into your 12V system to provide constant, precision voltage monitoring. If your shore power drops or your battery voltage dips dangerously low, you get a push notification immediately—giving you time to get back to the boat before the bilge fails.</p>
+					<ul>
+						<li>Precision 12V and starter battery voltage tracking.</li>
+						<li>Detects loss of shore AC power.</li>
+						<li>Extremely low power draw.</li>
+					</ul>
+				</div>
+				<div class="visual glass-card">
+					<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">🔋</div>
+					<h3 style="text-align: center; margin-top: 1rem;">12V Protection</h3>
+					<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Don't let a $100 battery drain cost you a vessel.</p>
+				</div>
+			</section>
+
+			<!-- 3. Shelly Flood -->
+			<section class="feature-block">
+				<div class="content">
+					<div class="icon-badge">🚨</div>
+					<h2>Remote Sensors (Shelly Flood)</h2>
+					<h3 class="risk-title">The Risk: Hidden Leaks</h3>
+					<p>Water can ingress from bad through-hulls, faulty seals, or rain. By the time water is visible above the floorboards, the damage to cabinetry, flooring, and electrical wiring is already done.</p>
+					
+					<h3 class="protection-title">The Protection</h3>
+					<p>Place low-cost Wi-Fi Shelly Flood sensors in your lowest bilge compartments or under your RV sinks. The second water bridges the sensor contacts, it fires a webhook to our Cloudflare network, triggering an instant push notification to your phone.</p>
+					<ul>
+						<li>Placed in discrete, high-risk areas.</li>
+						<li>Battery lasts over a year.</li>
+						<li>Can automatically trigger the LinkTap to close.</li>
+					</ul>
+				</div>
+				<div class="visual glass-card">
+					<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">📡</div>
+					<h3 style="text-align: center; margin-top: 1rem;">Instant Webhooks</h3>
+					<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Fraction-of-a-second alerting.</p>
+				</div>
+			</section>
+
+			<!-- 4. Shelly PM Mini Gen3 -->
+			<section class="feature-block row-reverse">
+				<div class="content">
+					<div class="icon-badge">🔌</div>
+					<h2>Shore Power Diagnostics (Shelly PM Mini Gen3)</h2>
+					<h3 class="risk-title">The Risk: Shorepower Blackouts</h3>
+					<p>When you're away from your rig or boat, a campsite power pedestal trip or a marina shore power failure can go unnoticed for hours or days. This leads to food spoiling in your fridge, deep battery discharge, and in winter, freezing cabin temperatures that can burst plumbing.</p>
+					
+					<h3 class="protection-title">The Protection</h3>
+					<p>The Shelly PM Mini Gen3 monitors AC line voltage directly. The moment AC voltage drops to zero (indicating a blackout), it fires a webhook to our Cloudflare network, which routes a high-priority push notification to your phone. This gives you plenty of time to intervene before the fridge spoils or batteries drain completely.</p>
+					<ul>
+						<li>Constant AC voltage and load monitoring.</li>
+						<li>Instant power outage notifications.</li>
+						<li>Very compact size for easy installation in electrical panels.</li>
+					</ul>
+				</div>
+				<div class="visual glass-card">
+					<div style="font-size: 5rem; text-align: center; margin-top: 3rem;">⚡</div>
+					<h3 style="text-align: center; margin-top: 1rem;">AC Power Tracking</h3>
+					<p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 0 1rem;">Get notified instantly of site power failure.</p>
+				</div>
+			</section>
+		</section>
+	</div>
+</Layout>
+
+<style>
+	.page-header {
+		background: rgba(14, 165, 233, 0.05);
+		border-bottom: 1px solid var(--surface-border);
+		padding: 4rem 0;
+		margin-bottom: 4rem;
+		text-align: center;
+	}
+
+	.page-header h1 {
+		font-size: 3rem;
+		margin-bottom: 1rem;
+		color: #fff;
+	}
+
+	.page-header p {
+		font-size: 1.2rem;
+		color: var(--text-muted);
+		max-width: 600px;
+		margin: 0 auto;
+	}
+
+	.devices-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+		gap: 2rem;
+		margin-bottom: 4rem;
+	}
+
+	.device-card {
+		padding: 2.5rem 2rem;
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+	}
+
+	.device-card h2 {
+		font-size: 1.5rem;
+		margin-bottom: 1rem;
+		color: #fff;
+	}
+
+	.device-card p {
+		color: var(--text-muted);
+		flex-grow: 1;
+		line-height: 1.6;
+		margin-bottom: 1.5rem;
+	}
+
+	.category-badge {
+		display: inline-block;
+		align-self: flex-start;
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+		font-size: 0.72rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		margin-bottom: 1rem;
+	}
+
+	/* Variant colors for categories */
+	.badge-water {
+		background: rgba(14, 165, 233, 0.1);
+		color: #38bdf8;
+		border: 1px solid rgba(14, 165, 233, 0.2);
+	}
+	.badge-flood {
+		background: rgba(239, 68, 68, 0.1);
+		color: #f87171;
+		border: 1px solid rgba(239, 68, 68, 0.2);
+	}
+	.badge-battery {
+		background: rgba(16, 185, 129, 0.1);
+		color: #34d399;
+		border: 1px solid rgba(16, 185, 129, 0.2);
+	}
+	.badge-shorepower {
+		background: rgba(245, 158, 11, 0.1);
+		color: #fbbf24;
+		border: 1px solid rgba(245, 158, 11, 0.2);
+	}
+
+	.device-image-container {
+		width: 100%;
+		height: 220px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 8px;
+		margin-bottom: 1.5rem;
+		overflow: hidden;
+		border: 1px solid var(--surface-border);
+		padding: 1.5rem;
+	}
+
+	.img-bg-light {
+		background: #ffffff;
+	}
+
+	.img-bg-dark {
+		background: #0d111d;
+	}
+
+	.device-image {
+		max-width: 100%;
+		max-height: 100%;
+		object-fit: contain;
+		transition: transform 0.3s ease;
+	}
+
+	.device-card:hover .device-image {
+		transform: scale(1.05);
+	}
+
+	.feature-block {
+		display: grid;
+		grid-template-columns: 1.2fr 1fr;
+		gap: 5rem;
+		align-items: center;
+		margin-bottom: 8rem;
+	}
+
+	.feature-block.row-reverse {
+		direction: rtl;
+	}
+
+	.feature-block.row-reverse > * {
+		direction: ltr;
+	}
+
+	.icon-badge {
+		font-size: 2.5rem;
+		margin-bottom: 1rem;
+		background: rgba(255,255,255,0.05);
+		width: 70px;
+		height: 70px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 16px;
+		border: 1px solid var(--surface-border);
+	}
+
+	.feature-block h2 {
+		font-size: 2.2rem;
+		margin-bottom: 1.5rem;
+		color: #fff;
+	}
+
+	.risk-title {
+		color: var(--danger-color);
+		font-size: 1.1rem;
+		margin-bottom: 0.5rem;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+	}
+
+	.protection-title {
+		color: var(--success-color);
+		font-size: 1.1rem;
+		margin-top: 2rem;
+		margin-bottom: 0.5rem;
+		text-transform: uppercase;
+		letter-spacing: 1px;
+	}
+
+	.feature-block p {
+		font-size: 1.15rem;
+		color: var(--text-muted);
+		margin-bottom: 1.5rem;
+		line-height: 1.7;
+	}
+
+	.feature-block ul {
+		list-style: none;
+		padding: 0;
+	}
+
+	.feature-block ul li {
+		position: relative;
+		padding-left: 2rem;
+		margin-bottom: 1.2rem;
+		font-size: 1.05rem;
+		color: #e2e8f0;
+	}
+
+	.feature-block ul li::before {
+		content: "✓";
+		position: absolute;
+		left: 0;
+		color: var(--accent-color);
+		font-size: 1.2rem;
+		font-weight: bold;
+		line-height: 1.2;
+	}
+
+	.visual {
+		min-height: 350px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		padding: 2rem;
+	}
+
+	@media (max-width: 992px) {
+		.feature-block {
+			grid-template-columns: 1fr;
+			gap: 3rem;
+			margin-bottom: 5rem;
+		}
+		.feature-block.row-reverse {
+			direction: ltr;
+		}
+	}
+</style>

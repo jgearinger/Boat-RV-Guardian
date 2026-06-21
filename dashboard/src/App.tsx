@@ -5,6 +5,7 @@ import Sensors from './pages/Sensors';
 import Settings from './pages/Settings';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { auth, onAuthStateChanged } from './services/firebase';
+import SyncModal from './components/SyncModal';
 
 type AppView = 'home' | 'fresh_water' | 'high_water' | 'batteries' | 'shore_power' | 'settings';
 
@@ -28,6 +29,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
+      <SyncModal />
       <header style={{ padding: '20px', background: 'var(--bg-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexShrink: 0, zIndex: 11 }}>
         <div style={{
           width: '45px',

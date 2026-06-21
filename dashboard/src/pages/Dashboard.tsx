@@ -160,29 +160,11 @@ export default function App() {
   // --- Local Safety  // Auto-Guard settings
   const [autoGuardEnabled, setAutoGuardEnabled] = useState(() => localStorage.getItem('lt_auto_guard') !== 'false');
 
-  // Listen to external settings changes (e.g. from Global Settings page)
+  const handleTestAlert = () => triggerAlert('Test Alert', 'This is a test of the Boat & Rv Guardian alert system.');
+  
   useEffect(() => {
-    const handleSettingsUpdate = () => {
-      setUnitSystem(localStorage.getItem('lt_unit') as 'metric' | 'imperial' || 'imperial');
-      setTimeZone(localStorage.getItem('lt_tz') || ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'));
-      
-      // Normal Run Profile (Global Settings)
-      setNormalRunHours(Number(localStorage.getItem('lt_nr_hrs') || '0'));
-      setNormalRunMinutes(Number(localStorage.getItem('lt_nr_mins') || '0'));
-      setNormalRunDaily(localStorage.getItem('lt_nr_daily') === 'true');
-      setNormalRunVolume(Number(localStorage.getItem('lt_nr_vol') || '10'));
-      setAutoRestartNormal(localStorage.getItem('lt_nr_auto') === 'true');
-    };
-    
-    const handleTestAlert = () => triggerAlert('Test Alert', 'This is a test of the Boat & Rv Guardian alert system.');
-    
-    window.addEventListener('settings_updated', handleSettingsUpdate);
     window.addEventListener('test_alert', handleTestAlert);
-    
-    return () => {
-      window.removeEventListener('settings_updated', handleSettingsUpdate);
-      window.removeEventListener('test_alert', handleTestAlert);
-    };
+    return () => window.removeEventListener('test_alert', handleTestAlert);
   }, []);
   const [maxFlowRate, setMaxFlowRate] = useState(() => Number(localStorage.getItem('lt_maxflow') || '15'));
   const [maxDuration, setMaxDuration] = useState(() => Number(localStorage.getItem('lt_maxdur') || '30'));
@@ -291,6 +273,52 @@ export default function App() {
   const [autoRestartNormal, setAutoRestartNormal] = useState(() => localStorage.getItem('lt_auto_restart') === 'true');
   const [targetDuration, setTargetDuration] = useState(() => Number(localStorage.getItem('lt_target_dur') || '0'));
   const [targetVolume, setTargetVolume] = useState(() => Number(localStorage.getItem('lt_target_vol') || '0'));
+
+  // Listen to global settings_updated events to sync Cloud changes down to local state
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setCloudUsername(localStorage.getItem('lt_cloud_user') || '');
+      setCloudApiKey(localStorage.getItem('lt_cloud_key') || '');
+      setAlertOffline(localStorage.getItem('lt_alert_offline') !== 'false');
+      setGatewayIp(localStorage.getItem('lt_gateway_ip') || '');
+      setGatewayId(localStorage.getItem('lt_gateway_id') || '');
+      setDeviceId(localStorage.getItem('lt_device_id') || '');
+      setRefreshInterval(Number(localStorage.getItem('lt_refresh') || '5'));
+      setAutoGuardEnabled(localStorage.getItem('lt_auto_guard') !== 'false');
+      setMaxFlowRate(Number(localStorage.getItem('lt_maxflow') || '15'));
+      setMaxDuration(Number(localStorage.getItem('lt_maxdur') || '30'));
+      setUnitSystem(localStorage.getItem('lt_unit') as 'metric' | 'imperial' || 'imperial');
+      setTimeZone(localStorage.getItem('lt_tz') || ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'));
+      setResetTime(localStorage.getItem('lt_reset_time') || '12:00');
+      setNotificationsEnabled(localStorage.getItem('lt_notifications') === 'true');
+      setAlarmSound((localStorage.getItem('lt_alarm_sound') as any) || 'beep');
+      setAlarmVolume(Number(localStorage.getItem('lt_alarm_vol') || '1.0'));
+      setAlarmRepeatInterval((localStorage.getItem('lt_alarm_repeat') as any) || 'once');
+      setNotifyAutoGuard(localStorage.getItem('lt_notif_autoguard') !== 'false');
+      setNotifyLowBattery(localStorage.getItem('lt_notif_battery') === 'true');
+      setNotifyWatering(localStorage.getItem('lt_notif_watering') === 'true');
+      setEnableHistory(localStorage.getItem('lt_enable_history') !== 'false');
+      setInputDuration(Number(localStorage.getItem('lt_input_dur') || '15'));
+      setInputVolume(Number(localStorage.getItem('lt_input_vol') || '50'));
+      setDelayedStartMins(Number(localStorage.getItem('lt_del_mins') || '0'));
+      setDelayedStartSecs(Number(localStorage.getItem('lt_del_secs') || '15'));
+      setWashDownDuration(Number(localStorage.getItem('lt_wash_dur') || '30'));
+      setWashDownResumeNormal(localStorage.getItem('lt_wd_resume') === 'true');
+      setNormalRunDaily(localStorage.getItem('lt_norm_daily') === 'true');
+      setNormalRunHours(Number(localStorage.getItem('lt_norm_hrs') || '24'));
+      setNormalRunMinutes(Number(localStorage.getItem('lt_norm_mins') || '0'));
+      setNormalRunVolume(Number(localStorage.getItem('lt_norm_vol') || '300'));
+      setAutoRestartNormal(localStorage.getItem('lt_auto_restart') === 'true');
+      setTargetDuration(Number(localStorage.getItem('lt_target_dur') || '0'));
+      setTargetVolume(Number(localStorage.getItem('lt_target_vol') || '0'));
+      setIsCloudPollingActive(localStorage.getItem('lt_is_cloud_polling') === 'true');
+      setIsLocalPollingActive(localStorage.getItem('lt_is_local_polling') === 'true');
+      setMockMode(localStorage.getItem('lt_mock') === 'true');
+    };
+    
+    window.addEventListener('settings_updated', handleSettingsUpdate);
+    return () => window.removeEventListener('settings_updated', handleSettingsUpdate);
+  }, []);
   const [discoveredDevices, setDiscoveredDevices] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [isGatewayDiscovering, setIsGatewayDiscovering] = useState(false);

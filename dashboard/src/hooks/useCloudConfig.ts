@@ -11,6 +11,7 @@ export interface LinkTapConfig {
 
 export interface CloudConfig {
   linktap?: LinkTapConfig;
+  [key: string]: any;
 }
 
 export function useCloudConfig() {
