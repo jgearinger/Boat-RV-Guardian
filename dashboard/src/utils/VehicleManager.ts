@@ -14,6 +14,7 @@ export interface DeviceConfig {
   shellyDeviceId?: string;
   localIp?: string; // Shelly local IP (for local RPC polling / factory reset)
   batteryPowered?: boolean; // sleepy sensor (flood etc.) — don't poll; rely on webhook push
+  bleMac?: string; // BLE address (for offline BTHome advertisement matching)
 
   // Device-specific settings
   maxFlowRate?: number;

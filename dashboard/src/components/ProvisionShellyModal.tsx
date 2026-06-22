@@ -162,7 +162,7 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
           const { registerShellyWebhooks } = await import('../utils/shellyRpc');
           const { shellyRpc } = await import('../utils/shellyRpc');
           const vid = (await import('../utils/VehicleManager')).getActiveVehicleId();
-          await registerShellyWebhooks((m, p) => shellyRpc('192.168.33.1', m, p), webhookBase, vid);
+          await registerShellyWebhooks((m, p) => shellyRpc('192.168.33.1', m, p), webhookBase, vid, shellyDeviceId);
         } catch { /* best-effort */ }
       }
 
@@ -201,6 +201,7 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
       // Manual-IP knows the address directly; BLE learns it from Wifi.GetStatus after the join.
       ...(method === 'manual_ip' && localIp ? { localIp } : {}),
       ...(method === 'bluetooth' && bleLocalIp ? { localIp: bleLocalIp } : {}),
+      ...(method === 'bluetooth' && selectedBleDevice ? { bleMac: selectedBleDevice } : {}),
     });
     setStep('completion');
   };
@@ -243,7 +244,7 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
         try {
           const { registerShellyWebhooks } = await import('../utils/shellyRpc');
           const vid = (await import('../utils/VehicleManager')).getActiveVehicleId();
-          await registerShellyWebhooks((m, p) => shellyRpc(localIp, m, p, shellyPassword || undefined), webhookBase, vid);
+          await registerShellyWebhooks((m, p) => shellyRpc(localIp, m, p, shellyPassword || undefined), webhookBase, vid, shellyDeviceId);
         } catch { /* best-effort */ }
       }
 

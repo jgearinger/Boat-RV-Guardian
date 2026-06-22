@@ -46,6 +46,60 @@ export async function scanShellyDevices(durationMs = 7000): Promise<BleShelly[]>
   return [...found.values()];
 }
 
+// ---------------------------------------------------------------------------
+// Offline mode: BLE advertisement (BTHome) scanning. Battery Shelly sensors broadcast their state
+// (flood/battery/temp) over BLE when awake, with no internet/cloud/broker. A single shared scan
+// feeds all subscribers. HARDWARE-UNTESTED decode — every advertisement is logged raw so we can map
+// the real device's BTHome layout and iterate.
+export interface AdvReading { mac: string; battery?: number; flood?: boolean; temperature?: number; raw: string; }
+
+const normMac = (s: string) => (s || '').toLowerCase().replace(/[^a-f0-9]/g, '');
+
+function decodeBTHome(dv: DataView): Partial<AdvReading> {
+  const bytes = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
+  const out: Partial<AdvReading> = { raw: [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('') };
+  let i = 1; // byte 0 = BTHome device-info flags
+  while (i < bytes.length) {
+    const id = bytes[i++];
+    if (id === 0x00) { i += 1; }                                   // packet id
+    else if (id === 0x01) { out.battery = bytes[i]; i += 1; }       // battery %
+    else if (id === 0x02) { out.temperature = dv.getInt16(i, true) * 0.01; i += 2; } // temp 0.01°C
+    else if (id === 0x1A || id === 0x0F || id === 0x2D) { out.flood = bytes[i] === 1; i += 1; } // candidate water/leak/binary
+    else { break; } // unknown id → stop (avoid misaligned reads); raw is logged for mapping
+  }
+  return out;
+}
+
+let advSubscribers: ((r: AdvReading) => void)[] = [];
+let advStop: (() => Promise<void>) | null = null;
+
+async function ensureAdvScan() {
+  if (advStop) return;
+  const BleClient = await client();
+  await BleClient.requestLEScan({ allowDuplicates: true }, (r: any) => {
+    const sd = r?.serviceData || {};
+    const key = Object.keys(sd).find((k) => k.toLowerCase().includes('fcd2')); // BTHome UUID 0xFCD2
+    if (!key) return;
+    try {
+      const reading: AdvReading = { mac: normMac(r?.device?.deviceId || ''), raw: '', ...decodeBTHome(sd[key]) } as AdvReading;
+      console.log('[shellyBle] adv', reading.mac, JSON.stringify(reading));
+      advSubscribers.forEach((cb) => cb(reading));
+    } catch { /* ignore malformed adv */ }
+  });
+  advStop = async () => { try { await BleClient.stopLEScan(); } catch { /* ignore */ } };
+}
+
+/** Subscribe to decoded BTHome advertisements. Starts the shared scan; stops it when the last
+ *  subscriber leaves. Returns an unsubscribe function. */
+export async function subscribeAdvertisements(onReading: (r: AdvReading) => void): Promise<() => void> {
+  advSubscribers.push(onReading);
+  await ensureAdvScan();
+  return () => {
+    advSubscribers = advSubscribers.filter((c) => c !== onReading);
+    if (advSubscribers.length === 0 && advStop) { advStop(); advStop = null; }
+  };
+}
+
 // One RPC round-trip on an already-connected device.
 async function rpcOnConnected(BleClient: typeof BleClientType, deviceId: string, method: string, params: any): Promise<any> {
   const req = enc.encode(JSON.stringify({ id: Math.floor(Math.random() * 1e6), src: 'brvg', method, params }));
@@ -118,7 +172,7 @@ export async function bleProvision(
       opts.onProgress?.('Setting up cloud alerts…');
       try {
         const { registerShellyWebhooks } = await import('./shellyRpc');
-        const made = await registerShellyWebhooks((m, p) => rpcOnConnected(BleClient, deviceId, m, p), opts.webhookBase, opts.vid);
+        const made = await registerShellyWebhooks((m, p) => rpcOnConnected(BleClient, deviceId, m, p), opts.webhookBase, opts.vid, info?.id || info?.mac || '');
         console.log('[shellyBle] registered webhooks:', made.join(', '));
       } catch (e) { console.log('[shellyBle] webhook setup failed (non-fatal)', e); }
     }

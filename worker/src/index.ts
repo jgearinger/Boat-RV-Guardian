@@ -115,6 +115,17 @@ const strField = (fields: any, key: string): string => fields?.[key]?.stringValu
 const arrField = (fields: any, key: string): string[] =>
   (fields?.[key]?.arrayValue?.values || []).map((v: any) => v.stringValue).filter(Boolean);
 
+/** Overwrite a Firestore document's fields (REST PATCH, value-wrapped). */
+async function setFirestoreDoc(env: Env, token: string, path: string, fields: Record<string, any>): Promise<void> {
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${path}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) console.warn(`Firestore write failed: ${res.status} ${await res.text()}`);
+}
+
 /** Send an FCM HTTP v1 push to a single registration token. */
 async function sendFcmPush(env: Env, token: string, fcmToken: string, title: string, body: string): Promise<void> {
   const res = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`, {
@@ -132,6 +143,7 @@ async function sendFcmPush(env: Env, token: string, fcmToken: string, title: str
 async function handleShellyWebhook(env: Env, url: URL): Promise<Response> {
   const vid = url.searchParams.get('vid');
   const event = url.searchParams.get('event') || 'sensor alert';
+  const device = (url.searchParams.get('device') || 'unknown').replace(/[\/#?]/g, '_');
   if (!vid) return new Response('Missing vid', { status: 400 });
 
   const token = await getFirebaseAccessToken(env);
@@ -142,6 +154,13 @@ async function handleShellyWebhook(env: Env, url: URL): Promise<Response> {
   const uids = arrField(vehicle, 'allowedUsers');
   const title = `🚨 ${name}`;
   const body = `Sensor alert: ${event}`;
+  const now = Date.now();
+
+  // Cache last-known state so the app can show it without polling (also serves the offline-return case).
+  await setFirestoreDoc(env, token, `vehicles/${vid}/sensorState/${device}`, {
+    event: { stringValue: event },
+    at: { integerValue: String(now) },
+  });
 
   let sent = 0;
   for (const uid of uids) {

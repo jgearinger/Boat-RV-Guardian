@@ -115,6 +115,13 @@ service cloud.firestore {
         allow create: if request.auth != null && request.auth.uid in request.resource.data.allowedUsers;
         allow update: if request.auth != null && request.auth.uid in resource.data.allowedUsers;
       }
+
+      // Worker-cached last sensor event (battery sensors). Worker writes via admin (bypasses rules).
+      match /sensorState/{sid} {
+        allow read:  if request.auth != null
+                     && request.auth.uid in get(/databases/$(database)/documents/vehicles/$(vid)).data.allowedUsers;
+        allow write: if false;
+      }
     }
 
     match /invites/{inviteId} {

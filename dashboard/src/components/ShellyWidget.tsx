@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import type { DeviceConfig } from '../utils/VehicleManager';
+import { type DeviceConfig, getActiveVehicleId } from '../utils/VehicleManager';
 import { nativeFetch } from '../utils/nativeFetch';
 import { shellyRpc } from '../utils/shellyRpc';
 import { formatTime } from '../utils/time';
+import { db, doc, onSnapshot } from '../services/firebase';
 
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
 
@@ -43,7 +44,7 @@ function Sparkline({ points, color, min, max, thresholds }: {
 export default function ShellyWidget({ device }: { device: DeviceConfig }) {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<'local' | 'cloud' | null>(null);
+  const [source, setSource] = useState<'local' | 'cloud' | 'ble' | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [history, setHistory] = useState<number[]>([]);
   const [shellyServer, setShellyServer] = useState('');
@@ -51,7 +52,53 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
   // Track flood wet/dry transitions for the flood panel
   const lastFloodRef = useRef<boolean | null>(null);
   const [floodSince, setFloodSince] = useState<number | null>(null);
+  const [cloudEvent, setCloudEvent] = useState<{ event: string; at: number } | null>(null);
   const localIp = device.localIp;
+
+  // Offline mode: listen for the device's BTHome BLE advertisements (no internet/cloud). Native only.
+  useEffect(() => {
+    if (!device.batteryPowered) return;
+    const Cap = (window as any).Capacitor;
+    if (!Cap?.isNativePlatform?.()) return;
+    const normMac = (s: string) => (s || '').toLowerCase().replace(/[^a-f0-9]/g, '');
+    const targetMac = normMac(device.bleMac || '');
+    const idMac = ((device.shellyDeviceId || '').match(/([0-9a-fA-F]{12})$/) || [])[1]?.toLowerCase() || '';
+    const matchAdv = (m: string) =>
+      (!!targetMac && m === targetMac) || (!!idMac && m.slice(0, 10) === idMac.slice(0, 10)); // BLE MAC last byte can differ
+
+    let unsub: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { subscribeAdvertisements } = await import('../utils/shellyBle');
+        const u = await subscribeAdvertisements((r) => {
+          if (!matchAdv(r.mac)) return;
+          setData((prev: any) => ({
+            ...(prev || {}),
+            ...(r.flood !== undefined ? { 'flood:0': { alarm: r.flood } } : {}),
+            ...(r.battery !== undefined ? { 'devicepower:0': { battery: { percent: r.battery } } } : {}),
+            ...(r.temperature !== undefined ? { 'temperature:0': { tC: r.temperature } } : {}),
+          }));
+          setSource('ble'); setError(null); setLastUpdated(Date.now());
+        });
+        if (cancelled) u(); else unsub = u;
+      } catch { /* BLE unavailable */ }
+    })();
+    return () => { cancelled = true; if (unsub) unsub(); };
+  }, [device.batteryPowered, device.bleMac, device.shellyDeviceId]);
+
+  // Battery sensors: read the worker-cached last event (no polling needed) — works whenever online.
+  useEffect(() => {
+    if (!device.batteryPowered || !device.shellyDeviceId) return;
+    const vid = getActiveVehicleId();
+    if (!vid) return;
+    const ref = doc(db, 'vehicles', vid, 'sensorState', device.shellyDeviceId);
+    const unsub = onSnapshot(ref, (snap: any) => {
+      const d = snap.data();
+      if (d?.event) setCloudEvent({ event: d.event, at: Number(d.at) || 0 });
+    }, () => {});
+    return () => unsub();
+  }, [device.batteryPowered, device.shellyDeviceId]);
 
   useEffect(() => {
     setShellyServer(localStorage.getItem('sh_server') || '');
@@ -105,6 +152,12 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
     // (in case it's awake right now) and otherwise leave it alone; use 🔄 to read after a manual wake.
     if (device.batteryPowered) {
       if (localIp || (shellyServer && shellyAuthKey)) fetchStatus();
+      // Opportunistic low-frequency poll: near-zero drain (the device only answers when awake),
+      // and it reliably catches an ACTIVE flood since the alarm keeps the device awake.
+      if (localIp) {
+        const slow = setInterval(fetchStatus, 240000); // 4 min
+        return () => clearInterval(slow);
+      }
       return;
     }
     if (!localIp && !(shellyServer && shellyAuthKey)) return;
@@ -116,16 +169,8 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
 
   let content = <div style={{ color: 'var(--text-muted)' }}>Loading…</div>;
 
-  if (error && device.batteryPowered && !data) {
-    // Battery sensor that's currently asleep — this is normal, not a failure.
-    content = (
-      <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-        🔋 Battery sensor — asleep.<br />Real-time alerts arrive via push. Press the device button to wake it, then tap 🔄.
-      </div>
-    );
-  } else if (error) {
-    content = <div style={{ color: '#ef4444' }}>⚠️ {error}</div>;
-  } else if (data) {
+  // Show last-known data first so a transient/asleep poll failure doesn't hide it.
+  if (data) {
     if (device.role === 'High Power Sensor') {
       const power = data['pm1:0']?.apower ?? data['switch:0']?.apower ?? data['em:0']?.total_act_power ?? data.meters?.[0]?.power ?? 0;
       const voltage = data['pm1:0']?.voltage ?? data['switch:0']?.voltage ?? data['em:0']?.a_voltage ?? data.meters?.[0]?.voltage ?? 0;
@@ -179,6 +224,15 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
     } else {
       content = <div>Unknown Shelly Type</div>;
     }
+  } else if (error && device.batteryPowered) {
+    // Asleep with no reading yet — normal for a battery sensor, not a failure.
+    content = (
+      <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+        🔋 Battery sensor — asleep.<br />Real-time alerts arrive via push. Press the device button to wake it, then tap 🔄.
+      </div>
+    );
+  } else if (error) {
+    content = <div style={{ color: '#ef4444' }}>⚠️ {error}</div>;
   }
 
   return (
@@ -194,9 +248,9 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
           )}
           {source && (
             <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', padding: '2px 8px', borderRadius: '10px',
-              color: source === 'local' ? '#10b981' : 'var(--accent-cyan)',
-              background: source === 'local' ? 'rgba(16,185,129,0.12)' : 'rgba(0,242,254,0.1)' }}>
-              {source === 'local' ? '🏠 LOCAL' : '☁️ CLOUD'}
+              color: source === 'cloud' ? 'var(--accent-cyan)' : '#10b981',
+              background: source === 'cloud' ? 'rgba(0,242,254,0.1)' : 'rgba(16,185,129,0.12)' }}>
+              {source === 'local' ? '🏠 LOCAL' : source === 'ble' ? '📡 BLE' : '☁️ CLOUD'}
             </span>
           )}
         </div>
@@ -204,6 +258,11 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '18px' }}>
         {content}
       </div>
+      {device.batteryPowered && cloudEvent && (
+        <div style={{ fontSize: '0.72rem', color: /alarm|flood|leak/i.test(cloudEvent.event) && !/off|clear|inactive/i.test(cloudEvent.event) ? '#ef4444' : 'var(--text-secondary)', textAlign: 'center', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', padding: '4px' }}>
+          📡 Last report: <strong>{cloudEvent.event}</strong>{cloudEvent.at ? ` · ${formatTime(cloudEvent.at)}` : ''}
+        </div>
+      )}
       {lastUpdated && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textAlign: 'right' }}>Updated {formatTime(lastUpdated)}</div>}
     </div>
   );

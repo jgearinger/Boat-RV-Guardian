@@ -73,6 +73,7 @@ export async function registerShellyWebhooks(
   call: (method: string, params: any) => Promise<any>,
   baseUrl: string,
   vid: string,
+  deviceId = '',
 ): Promise<string[]> {
   let supported: string[] = [];
   try {
@@ -83,10 +84,11 @@ export async function registerShellyWebhooks(
   const alertish = supported.filter((e) => /flood|alarm|leak|smoke|over|under|sensor|temperature|motion|opened|closed|btn/i.test(e));
   const events = (alertish.length ? alertish : supported).slice(0, 8); // cap to avoid spamming
   const root = baseUrl.replace(/\/$/, '');
+  const dev = deviceId ? `&device=${encodeURIComponent(deviceId)}` : '';
 
   const created: string[] = [];
   for (const event of events) {
-    const url = `${root}/api/shelly?vid=${encodeURIComponent(vid)}&event=${encodeURIComponent(event)}`;
+    const url = `${root}/api/shelly?vid=${encodeURIComponent(vid)}${dev}&event=${encodeURIComponent(event)}`;
     try {
       await call('Webhook.Create', { cid: 0, enable: true, event, urls: [url] });
       created.push(event);
