@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { DeviceConfig } from '../utils/VehicleManager';
 import { nativeFetch } from '../utils/nativeFetch';
+import { shellyRpc } from '../utils/shellyRpc';
 
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
 
@@ -32,10 +33,10 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
   const fetchStatus = async () => {
     // Prefer local RPC when the device IP is known — faster, no cloud dependency.
     // Shelly.GetStatus returns the same status shape the cloud reports as device_status.
+    // shellyRpc authenticates with the vehicle password only if the device is secured.
     if (localIp) {
       try {
-        const res = await unifiedFetch(`http://${localIp}/rpc/Shelly.GetStatus`);
-        const json = await res.json();
+        const json = await shellyRpc(localIp, 'Shelly.GetStatus', {}, localStorage.getItem('sh_local_password') || undefined);
         if (json && !json.error) {
           setData(json);
           setSource('local');

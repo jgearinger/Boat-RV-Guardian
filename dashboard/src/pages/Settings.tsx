@@ -15,7 +15,7 @@ import {
 import ProvisionShellyModal from '../components/ProvisionShellyModal';
 import ProvisionLinkTapModal from '../components/ProvisionLinkTapModal';
 
-const APP_VERSION = '1.0.34';
+const APP_VERSION = '1.0.35';
 
 
 
@@ -509,6 +509,10 @@ export default function Settings({ user }: { user: any }) {
     switchVehicle(newVid);
     setShowNewVehicleModal(false);
   };
+
+  // Per-device action feedback (test connection / secure)
+  const [devicePanelMsg, setDevicePanelMsg] = useState<{ id: string; text: string; ok: boolean } | null>(null);
+  const [devicePanelBusy, setDevicePanelBusy] = useState(false);
 
   // Device removal (with optional factory reset) — confirmed via dialog
   const [deviceToRemove, setDeviceToRemove] = useState<DeviceConfig | null>(null);
@@ -1236,9 +1240,79 @@ export default function Settings({ user }: { user: any }) {
                           )}
 
                           {device.type === 'shelly_sensor' && (
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               <div><strong style={{ color: '#fff' }}>Device ID:</strong> {device.shellyDeviceId}</div>
                               <div><strong style={{ color: '#fff' }}>Role:</strong> {device.role}</div>
+
+                              <div>
+                                <label className="form-label" style={{ marginBottom: '4px' }}>Local IP Address</label>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 6px 0' }}>
+                                  Set this so the app can poll the device directly on your network (faster than cloud).
+                                </p>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <input
+                                    className="form-input"
+                                    placeholder="e.g. 192.168.1.50"
+                                    defaultValue={device.localIp || ''}
+                                    onBlur={(e) => { import('../utils/VehicleManager').then(m => { m.updateDevice(device.id, { localIp: e.target.value.trim() }); setDevices(m.getDevices()); }); }}
+                                    style={{ flex: 1 }}
+                                  />
+                                  <button
+                                    className="btn-secondary"
+                                    disabled={devicePanelBusy || !device.localIp}
+                                    style={{ padding: '6px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                    onClick={async () => {
+                                      setDevicePanelBusy(true); setDevicePanelMsg(null);
+                                      try {
+                                        const { shellyRpc } = await import('../utils/shellyRpc');
+                                        const info = await shellyRpc(device.localIp!, 'Shelly.GetDeviceInfo', {}, localStorage.getItem('sh_local_password') || undefined);
+                                        setDevicePanelMsg({ id: device.id, text: `✓ Reachable — ${info?.model || info?.app || info?.id || 'Shelly'}`, ok: true });
+                                      } catch (err: any) {
+                                        setDevicePanelMsg({ id: device.id, text: `✗ ${err?.message || 'Unreachable'}`, ok: false });
+                                      } finally { setDevicePanelBusy(false); }
+                                    }}
+                                  >Test</button>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button
+                                  className="btn-secondary"
+                                  disabled={devicePanelBusy || !device.localIp || !device.shellyDeviceId}
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                  onClick={async () => {
+                                    setDevicePanelBusy(true); setDevicePanelMsg(null);
+                                    try {
+                                      const { shellySetPassword } = await import('../utils/shellyRpc');
+                                      const pw = localStorage.getItem('sh_local_password') || '';
+                                      if (!pw) throw new Error('No vehicle password set');
+                                      await shellySetPassword(device.localIp!, device.shellyDeviceId!, pw);
+                                      setDevicePanelMsg({ id: device.id, text: '✓ Device secured with the vehicle password.', ok: true });
+                                    } catch (err: any) {
+                                      setDevicePanelMsg({ id: device.id, text: `✗ ${err?.message || 'Failed'}`, ok: false });
+                                    } finally { setDevicePanelBusy(false); }
+                                  }}
+                                >🔒 Secure with vehicle password</button>
+                                <button
+                                  className="btn-secondary"
+                                  disabled={devicePanelBusy || !device.localIp}
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                  onClick={async () => {
+                                    setDevicePanelBusy(true); setDevicePanelMsg(null);
+                                    try {
+                                      const { shellyClearPassword } = await import('../utils/shellyRpc');
+                                      await shellyClearPassword(device.localIp!, localStorage.getItem('sh_local_password') || '');
+                                      setDevicePanelMsg({ id: device.id, text: '✓ Password cleared.', ok: true });
+                                    } catch (err: any) {
+                                      setDevicePanelMsg({ id: device.id, text: `✗ ${err?.message || 'Failed'}`, ok: false });
+                                    } finally { setDevicePanelBusy(false); }
+                                  }}
+                                >Clear password</button>
+                              </div>
+
+                              {devicePanelMsg?.id === device.id && (
+                                <div style={{ fontSize: '0.8rem', color: devicePanelMsg.ok ? '#10b981' : '#ef4444' }}>{devicePanelMsg.text}</div>
+                              )}
                             </div>
                           )}
                         </div>
