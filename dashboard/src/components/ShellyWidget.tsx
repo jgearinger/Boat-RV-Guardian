@@ -99,16 +99,31 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
   };
 
   useEffect(() => {
+    // Battery/sleepy sensors (flood etc.) must NOT be polled — they deep-sleep, so polling just
+    // times out (shows "down") and waking them drains the battery. They report on their wake cycle
+    // and push real-time alerts via the cloud webhook. We do a single best-effort read on mount
+    // (in case it's awake right now) and otherwise leave it alone; use 🔄 to read after a manual wake.
+    if (device.batteryPowered) {
+      if (localIp || (shellyServer && shellyAuthKey)) fetchStatus();
+      return;
+    }
     if (!localIp && !(shellyServer && shellyAuthKey)) return;
     fetchStatus();
     const interval = setInterval(fetchStatus, localIp ? 8000 : 15000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localIp, shellyServer, shellyAuthKey, device.id]);
+  }, [localIp, shellyServer, shellyAuthKey, device.id, device.batteryPowered]);
 
   let content = <div style={{ color: 'var(--text-muted)' }}>Loading…</div>;
 
-  if (error) {
+  if (error && device.batteryPowered && !data) {
+    // Battery sensor that's currently asleep — this is normal, not a failure.
+    content = (
+      <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+        🔋 Battery sensor — asleep.<br />Real-time alerts arrive via push. Press the device button to wake it, then tap 🔄.
+      </div>
+    );
+  } else if (error) {
     content = <div style={{ color: '#ef4444' }}>⚠️ {error}</div>;
   } else if (data) {
     if (device.role === 'High Power Sensor') {
@@ -168,15 +183,23 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
 
   return (
     <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
         <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent-orange)' }}>{device.name || `Shelly ${device.role}`}</h3>
-        {source && (
-          <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', padding: '2px 8px', borderRadius: '10px',
-            color: source === 'local' ? '#10b981' : 'var(--accent-cyan)',
-            background: source === 'local' ? 'rgba(16,185,129,0.12)' : 'rgba(0,242,254,0.1)' }}>
-            {source === 'local' ? '🏠 LOCAL' : '☁️ CLOUD'}
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {device.batteryPowered && (
+            <button onClick={fetchStatus} title="Read now (device must be awake)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '2px' }}>🔄</button>
+          )}
+          {device.batteryPowered && (
+            <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '2px 6px', borderRadius: '8px', color: '#a3a3a3', background: 'rgba(255,255,255,0.08)' }}>🔋 BATTERY</span>
+          )}
+          {source && (
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', padding: '2px 8px', borderRadius: '10px',
+              color: source === 'local' ? '#10b981' : 'var(--accent-cyan)',
+              background: source === 'local' ? 'rgba(16,185,129,0.12)' : 'rgba(0,242,254,0.1)' }}>
+              {source === 'local' ? '🏠 LOCAL' : '☁️ CLOUD'}
+            </span>
+          )}
+        </div>
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '18px' }}>
         {content}

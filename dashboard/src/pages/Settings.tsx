@@ -3,7 +3,7 @@ import { auth, signOut } from '../services/firebase';
 import Login from './Login';
 
 import { getActiveVehicleId, getVehiclesMap, switchVehicle, addNewVehicle, deleteVehicle, getDevices, type DeviceConfig } from '../utils/VehicleManager';
-import { getLocalVehicleConfig } from '../utils/configSync';
+import { getLocalVehicleConfig, DEFAULT_WORKER_URL } from '../utils/configSync';
 import { nativeFetch } from '../utils/nativeFetch';
 import { useCloudConfig } from '../hooks/useCloudConfig';
 import { usePendingInvites } from '../hooks/usePendingInvites';
@@ -15,7 +15,7 @@ import {
 import ProvisionShellyModal from '../components/ProvisionShellyModal';
 import ProvisionLinkTapModal from '../components/ProvisionLinkTapModal';
 
-const APP_VERSION = '1.0.36';
+const APP_VERSION = '1.0.37';
 
 
 
@@ -141,7 +141,7 @@ export default function Settings({ user }: { user: any }) {
   const [vesselNickname, setVesselNickname] = useState(() => localStorage.getItem('lt_vessel_name') || '');
   const [shellyLocalPassword, setShellyLocalPassword] = useState(() => localStorage.getItem('sh_local_password') || '');
   const [showShellyPw, setShowShellyPw] = useState(false);
-  const [webhookUrl, setWebhookUrl] = useState(() => localStorage.getItem('sh_webhook_url') || '');
+  const [webhookUrl, setWebhookUrl] = useState(() => localStorage.getItem('sh_webhook_url') || DEFAULT_WORKER_URL);
   
   // Normal Run Profile Config
   const [normalRunHours, setNormalRunHours] = useState(() => Number(localStorage.getItem('lt_nr_hrs') || '0'));
@@ -1255,6 +1255,13 @@ export default function Settings({ user }: { user: any }) {
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               <div><strong style={{ color: '#fff' }}>Device ID:</strong> {device.shellyDeviceId}</div>
                               <div><strong style={{ color: '#fff' }}>Role:</strong> {device.role}</div>
+
+                              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                                <span>🔋 Battery-powered (don't poll — alerts via push)</span>
+                                <input type="checkbox" checked={device.batteryPowered !== false && (device.batteryPowered === true || device.role === 'Flood Sensor')}
+                                  onChange={(e) => { import('../utils/VehicleManager').then(m => { m.updateDevice(device.id, { batteryPowered: e.target.checked }); setDevices(m.getDevices()); }); }}
+                                  style={{ width: '16px', height: '16px', accentColor: 'var(--accent-cyan)' }} />
+                              </label>
 
                               <div>
                                 <label className="form-label" style={{ marginBottom: '4px' }}>Local IP Address</label>

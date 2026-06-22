@@ -35,18 +35,26 @@ only reads vehicle config to relay LinkTap commands.
 
 (History rule is included in the consolidated ruleset below.)
 
-## Shelly devices (provisioning, polling, password)
+## Shelly devices (provisioning, polling, alerts)
 
-- Each vehicle has an auto-generated 8-char `sh_local_password` (per-vehicle, cloud-synced; created
-  in `VehicleManager.generateShellyPassword()` on vehicle creation). Editable/regenerable in the
-  General tab. **Currently the password is NOT pushed to devices** (user chose unauthenticated local
-  RPC) — it's reserved for the cloud/webhook side and future authenticated polling.
-- **Local polling** (`ShellyWidget`, rendered from `Dashboard.tsx` over the `lt_devices` model):
-  when `device.localIp` is known it polls `http://<ip>/rpc/Shelly.GetStatus` (no auth, ~8s) and
-  falls back to Shelly cloud (`/device/status`, ~15s) otherwise. A LOCAL/CLOUD badge shows the
-  source. `device.localIp` is captured during manual-IP provisioning; AP/BLE setups need discovery
-  to learn it (follow-up). NOTE: the `Sensors.tsx` category pages still use the older cloud-only
-  `sh_high_power`/`sh_low_power`/`sh_flood` arrays — not yet migrated to local polling.
+- **BLE provisioning** (`utils/shellyBle.ts`, native Android/iOS only — first/recommended there;
+  hidden on desktop/web): scan by name, `Wifi.Scan` over BLE for SSID picking, then `Wifi.SetConfig`,
+  then poll `Wifi.GetStatus` until a real (non-`0.0.0.0`) DHCP IP appears and save it as `localIp`.
+  Mongoose-OS RPC framing over GATT. SSID/password inputs disable autocapitalize/autocorrect (an
+  autocapitalized password was the real bug). Wi-Fi AP / Manual IP paths still exist (HTTP RPC).
+- **Battery/sleepy sensors** (flood etc.) set `device.batteryPowered` and are **never polled** —
+  they deep-sleep, so polling shows false "down" and waking them drains the battery. They report on
+  their wake cycle and push real-time alerts via the webhook. `ShellyWidget`/`useShellyStatus` do one
+  best-effort read on mount + a manual 🔄; mains sensors (shore/battery-voltage) poll local-first.
+- **Cloud alerts**: `Webhook.ListSupported` discovers the device's real events; provisioning
+  registers webhooks to `${sh_webhook_url || DEFAULT_WORKER_URL}/api/shelly?vid=…&event=…`. The
+  worker (`boat-rv-guardian-webhooks`, deployed at `…jgearinger.workers.dev`) reads the vehicle +
+  `users/{uid}.fcmToken` and sends FCM pushes. The app writes its FCM token to `users/{uid}`.
+  Needs `firebase.messaging` scope (set) + FCM API enabled. `sys.online` is INVALID on flood
+  sensors — always discover events, never hardcode.
+- `sh_local_password` (per-vehicle, auto-generated) is for optional local auth; not pushed by default.
+- Per-device polling is local-first (`http://<ip>/rpc/Shelly.GetStatus`, ~8s) → Shelly cloud
+  fallback (~15s); `Sensors.tsx` category pages render the `lt_devices` model via `ShellyWidget`.
 - **Provisioning** (`ProvisionShellyModal`): auto-detects sensor type from `Shelly.GetDeviceInfo`,
   and **only creates the cloud webhook when signed in**. Removing a device confirms via dialog and
   can optionally send `Shelly.FactoryReset` to its local IP (best-effort).

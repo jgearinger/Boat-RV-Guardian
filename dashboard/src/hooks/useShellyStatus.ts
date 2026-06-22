@@ -42,9 +42,11 @@ export function useShellyStatus(device: DeviceConfig, intervalMs = 12000) {
     };
 
     poll();
+    // Battery/sleepy sensors aren't polled (they deep-sleep + drain on wake); one read on mount only.
+    if (device.batteryPowered) return () => { cancelled = true; };
     const id = setInterval(poll, intervalMs);
     return () => { cancelled = true; clearInterval(id); };
-  }, [device.id, device.localIp, intervalMs]);
+  }, [device.id, device.localIp, device.batteryPowered, intervalMs]);
 
   return { data, source };
 }

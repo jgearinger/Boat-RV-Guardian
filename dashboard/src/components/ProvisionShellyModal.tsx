@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { nativeFetch } from '../utils/nativeFetch';
 import { auth } from '../services/firebase';
+import { DEFAULT_WORKER_URL } from '../utils/configSync';
 
 // Helper to use Tauri's fetch if available, otherwise browser fetch
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
@@ -154,7 +155,7 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
       setShellyId(shellyDeviceId);
 
       // Cloud-alert webhooks: only when signed in and a worker URL is configured.
-      const webhookBase = auth.currentUser ? (localStorage.getItem('sh_webhook_url') || '') : '';
+      const webhookBase = auth.currentUser ? (localStorage.getItem('sh_webhook_url') || DEFAULT_WORKER_URL) : '';
       if (webhookBase) {
         setStatusMessage('Setting up cloud alerts (2/3)...');
         try {
@@ -195,6 +196,8 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
       role: deviceRole,
       name: deviceRole,
       shellyDeviceId: shellyId,
+      // Flood sensors are battery/sleepy → don't poll them (toggle in device settings for others).
+      batteryPowered: deviceRole === 'Flood Sensor',
       // Manual-IP knows the address directly; BLE learns it from Wifi.GetStatus after the join.
       ...(method === 'manual_ip' && localIp ? { localIp } : {}),
       ...(method === 'bluetooth' && bleLocalIp ? { localIp: bleLocalIp } : {}),
@@ -234,7 +237,7 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
       setShellyId(shellyDeviceId);
 
       // Cloud-alert webhooks: only when signed in and a worker URL is configured.
-      const webhookBase = auth.currentUser ? (localStorage.getItem('sh_webhook_url') || '') : '';
+      const webhookBase = auth.currentUser ? (localStorage.getItem('sh_webhook_url') || DEFAULT_WORKER_URL) : '';
       if (webhookBase) {
         setStatusMessage('Setting up cloud alerts…');
         try {
@@ -259,7 +262,7 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
     setStatusMessage('Connecting & sending Wi-Fi over Bluetooth…');
     try {
       const { bleProvision } = await import('../utils/shellyBle');
-      const webhookBase = auth.currentUser ? (localStorage.getItem('sh_webhook_url') || '') : '';
+      const webhookBase = auth.currentUser ? (localStorage.getItem('sh_webhook_url') || DEFAULT_WORKER_URL) : '';
       const vid = (await import('../utils/VehicleManager')).getActiveVehicleId();
       const { info, localIp, lastStatus } = await bleProvision(selectedDev.deviceId, { ssid, password, webhookBase: webhookBase || undefined, vid, onProgress: setStatusMessage });
       setBleLocalIp(localIp || '');

@@ -13,6 +13,7 @@ export interface DeviceConfig {
   // Shelly mapping
   shellyDeviceId?: string;
   localIp?: string; // Shelly local IP (for local RPC polling / factory reset)
+  batteryPowered?: boolean; // sleepy sensor (flood etc.) — don't poll; rely on webhook push
 
   // Device-specific settings
   maxFlowRate?: number;

@@ -65,6 +65,10 @@ export const VEHICLE_DEFAULT_CONFIG: Record<string, string> = {
 
 export const VEHICLE_KEYS = Object.keys(VEHICLE_DEFAULT_CONFIG);
 
+// Deployed Cloudflare worker that relays Shelly sensor alerts → FCM push. Used as the default
+// when the user hasn't overridden it in Settings.
+export const DEFAULT_WORKER_URL = 'https://boat-rv-guardian-webhooks.jgearinger.workers.dev';
+
 export function isLocalVehicleConfigDefault(): boolean {
   for (const key of VEHICLE_KEYS) {
     const val = localStorage.getItem(key);
