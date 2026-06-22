@@ -15,7 +15,7 @@ import {
 import ProvisionShellyModal from '../components/ProvisionShellyModal';
 import ProvisionLinkTapModal from '../components/ProvisionLinkTapModal';
 
-const APP_VERSION = '1.0.33';
+const APP_VERSION = '1.0.34';
 
 
 
