@@ -61,12 +61,12 @@ The app is free — your only cost is hardware.
 
 | System | Hardware | Est. cost |
 | --- | --- | --- |
-| City water control | LinkTap valve + Gateway + pressure regulator | ~$160–185 |
+| City water control | LinkTap valve + Gateway | ~$135–160 |
 | Flood / high water | Shelly Flood Gen4 | ~$30 each |
 | 12V battery monitoring | Shelly Plus Uni + fused harness + enclosure | ~$45 |
 | Shore power | Shelly PM Mini Gen3 | ~$25 |
 
-A typical full build runs **~$290–315**. Estimates only — prices vary by region. Full list with buy links: **[Supported Devices](https://boatrvguardian.com/devices)**.
+A typical full build runs **~$265–290**. Estimates only — prices vary by region. Full list with buy links: **[Supported Devices](https://boatrvguardian.com/devices)**.
 
 > Some advanced features may become optional paid add-ons in the future to help sustain the project. The core monitoring and protection will always be free.
 
