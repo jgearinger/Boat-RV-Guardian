@@ -44,7 +44,7 @@ export default function App() {
             BOAT AND RV GUARDIAN
           </h1>
           <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            A free app for using your smart valve as a burst pipe auto shutoff
+            Monitor and control critical systems on your Boat or RV
           </p>
         </div>
       </header>

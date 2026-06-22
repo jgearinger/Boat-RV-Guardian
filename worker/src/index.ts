@@ -44,8 +44,8 @@ async function getFirebaseAccessToken(env: Env): Promise<string> {
 /**
  * Retrieves the user's LinkTap API config from Firestore.
  */
-async function getLinkTapConfigFromFirestore(env: Env, token: string, uid: string): Promise<any> {
-  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${uid}`;
+async function getLinkTapConfigFromFirestore(env: Env, token: string, vid: string): Promise<any> {
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/vehicles/${vid}`;
   const res = await fetch(url, {
     method: 'GET',
     headers: {
@@ -59,16 +59,15 @@ async function getLinkTapConfigFromFirestore(env: Env, token: string, uid: strin
 
   const data: any = await res.json();
   
-  if (!data.fields || !data.fields.linktap || !data.fields.linktap.mapValue) {
-    throw new Error('LinkTap configuration not found in Firestore for this user.');
+  if (!data.fields) {
+    throw new Error('Vehicle configuration not found in Firestore.');
   }
 
-  const linktapObj = data.fields.linktap.mapValue.fields;
   return {
-    username: linktapObj.username?.stringValue || '',
-    apiKey: linktapObj.apiKey?.stringValue || '',
-    gatewayId: linktapObj.gatewayId?.stringValue || '',
-    taplinkerId: linktapObj.taplinkerId?.stringValue || ''
+    username: data.fields.lt_cloud_user?.stringValue || '',
+    apiKey: data.fields.lt_cloud_key?.stringValue || '',
+    gatewayId: data.fields.lt_gateway_id?.stringValue || '',
+    taplinkerId: data.fields.lt_device_id?.stringValue || ''
   };
 }
 
@@ -109,18 +108,18 @@ export default {
 
     try {
       const url = new URL(request.url);
-      const uid = url.searchParams.get('uid');
-      if (!uid) {
-        return new Response('Missing uid parameter', { status: 400 });
+      const vid = url.searchParams.get('vid');
+      if (!vid) {
+        return new Response('Missing vid parameter', { status: 400 });
       }
 
-      console.log(`Processing webhook for uid: ${uid}`);
+      console.log(`Processing webhook for vid: ${vid}`);
 
       // 1. Get Google OAuth Access Token
       const accessToken = await getFirebaseAccessToken(env);
 
       // 2. Fetch LinkTap Config from Firestore
-      const linktapConfig = await getLinkTapConfigFromFirestore(env, accessToken, uid);
+      const linktapConfig = await getLinkTapConfigFromFirestore(env, accessToken, vid);
 
       if (!linktapConfig.username || !linktapConfig.apiKey || !linktapConfig.gatewayId || !linktapConfig.taplinkerId) {
         return new Response('Incomplete LinkTap config in Firestore', { status: 400 });
@@ -129,7 +128,7 @@ export default {
       // 3. Trigger Water Shutoff via LinkTap
       await triggerLinkTapShutoff(linktapConfig);
 
-      console.log(`Successfully triggered water shutoff for uid: ${uid}`);
+      console.log(`Successfully triggered water shutoff for vid: ${vid}`);
 
       return new Response(JSON.stringify({ status: 'success', action: 'linktap_shutoff' }), {
         headers: { 'Content-Type': 'application/json' },

@@ -1,23 +1,43 @@
 import { useState, useEffect } from 'react';
 import { useCloudConfig } from '../hooks/useCloudConfig';
-import { isLocalConfigDefault, applyCloudConfig, getLocalConfig } from '../utils/configSync';
-import { auth, signOut } from '../services/firebase';
+import { isLocalVehicleConfigDefault, applyCloudVehicleConfig, getLocalVehicleConfig } from '../utils/configSync';
+import { getActiveVehicleId } from '../utils/VehicleManager';
+import { auth } from '../services/firebase';
 
 export default function SyncModal() {
-  const { config, updateConfig, loading } = useCloudConfig();
+  const [activeVid, setActiveVid] = useState(getActiveVehicleId());
+  const { activeVehicleConfig, updateVehicleConfig, loading } = useCloudConfig(activeVid);
   const [showModal, setShowModal] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [hasResolved, setHasResolved] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Keep activeVid in sync with local storage if user switches vehicles
+  useEffect(() => {
+    const handleSettingsUpdated = () => {
+      const currentVid = getActiveVehicleId();
+      if (currentVid !== activeVid) {
+        setActiveVid(currentVid);
+        setHasResolved(false); // Reset resolution state when vehicle changes
+      }
+    };
+    window.addEventListener('settings_updated', handleSettingsUpdated);
+    return () => window.removeEventListener('settings_updated', handleSettingsUpdated);
+  }, [activeVid]);
 
   useEffect(() => {
     if (loading || !auth.currentUser || hasResolved) return;
+    if (localStorage.getItem('lt_sync_cloud') === 'false') {
+      setHasResolved(true);
+      return;
+    }
 
-    const isLocalDefault = isLocalConfigDefault();
+    const isLocalDefault = isLocalVehicleConfigDefault();
 
-    if (!config || Object.keys(config).length === 0) {
-      // New cloud user: push local config to cloud silently
+    if (!activeVehicleConfig || Object.keys(activeVehicleConfig).length === 0) {
+      // New cloud vehicle: push local config to cloud silently
       if (!isLocalDefault) {
-        updateConfig(getLocalConfig());
+        updateVehicleConfig(activeVid, getLocalVehicleConfig());
       }
       setHasResolved(true);
     } else {
@@ -25,20 +45,15 @@ export default function SyncModal() {
       if (isLocalDefault) {
         // Local is default, just pull cloud config silently
         (window as any).__is_syncing_cloud = true;
-        applyCloudConfig(config);
+        applyCloudVehicleConfig(activeVehicleConfig);
         (window as any).__is_syncing_cloud = false;
         setHasResolved(true);
       } else {
-        // Conflict! Both exist and local is not default.
-        // In a perfect world we would diff them, but for now we just show the modal.
-        // Wait, if they are exactly identical, we don't need to show the modal.
-        // But doing a deep equal is hard. Let's just assume if local isn't default, we ask.
-        // Actually, we can check if local exactly equals cloud config.
+        // Check for identicalness
         let isIdentical = true;
-        const local = getLocalConfig();
+        const local = getLocalVehicleConfig();
         for (const key of Object.keys(local)) {
-          if (key === 'linktap') continue; // skip nested
-          if (local[key] !== config[key]) {
+          if (local[key] !== activeVehicleConfig[key]) {
             isIdentical = false;
             break;
           }
@@ -51,91 +66,99 @@ export default function SyncModal() {
         }
       }
     }
-  }, [config, loading, hasResolved]);
+  }, [activeVehicleConfig, loading, hasResolved, activeVid]);
 
   // Setup auto-save listener
   useEffect(() => {
     const handleSettingsUpdated = () => {
       if ((window as any).__is_syncing_cloud) return;
+      if (localStorage.getItem('lt_sync_cloud') === 'false') return;
       if (auth.currentUser && hasResolved) {
-        updateConfig(getLocalConfig());
+        updateVehicleConfig(activeVid, getLocalVehicleConfig());
       }
     };
     window.addEventListener('settings_updated', handleSettingsUpdated);
     return () => window.removeEventListener('settings_updated', handleSettingsUpdated);
-  }, [hasResolved]);
+  }, [hasResolved, activeVid]);
 
   if (!showModal) return null;
 
   const handleUseLocal = async () => {
     setIsResolving(true);
-    await updateConfig(getLocalConfig());
-    setShowModal(false);
-    setHasResolved(true);
-    setIsResolving(false);
+    setSyncError(null);
+    try {
+      const timeoutPromise = new Promise<void>((_, reject) => 
+        setTimeout(() => reject(new Error('Sync request timed out. Please check your connection.')), 8000)
+      );
+      await Promise.race([
+        updateVehicleConfig(activeVid, getLocalVehicleConfig()),
+        timeoutPromise
+      ]);
+      setShowModal(false);
+      setHasResolved(true);
+    } catch (e: any) {
+      setSyncError(e?.message || 'An error occurred while syncing.');
+    } finally {
+      setIsResolving(false);
+    }
   };
 
-  const handleUseCloud = async () => {
+  const handleUseCloud = () => {
     setIsResolving(true);
     (window as any).__is_syncing_cloud = true;
-    applyCloudConfig(config || {});
+    applyCloudVehicleConfig(activeVehicleConfig || {});
     (window as any).__is_syncing_cloud = false;
     setShowModal(false);
     setHasResolved(true);
     setIsResolving(false);
+    window.location.reload();
   };
 
-  const handleLogout = async () => {
-    setIsResolving(true);
-    await signOut(auth);
+  const handleCancel = () => {
     setShowModal(false);
     setHasResolved(true);
-    setIsResolving(false);
   };
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
-      backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex',
-      justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)'
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.8)', zIndex: 10000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      backdropFilter: 'blur(5px)'
     }}>
-      <div className="glass-card" style={{ maxWidth: '500px', width: '90%', padding: '30px' }}>
-        <h2 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>Configuration Conflict</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          You have successfully logged in, but this device has local configuration settings that differ from your Cloud Settings.
-        </p>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          How would you like to proceed?
+      <div className="glass-card" style={{ maxWidth: '400px', width: '90%' }}>
+        <h3 style={{ marginTop: 0, color: 'var(--accent-cyan)' }}>Cloud Sync Conflict</h3>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+          We found an existing configuration in the cloud for this vehicle, but you also have local settings. Which one would you like to keep?
         </p>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '25px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
           <button 
             className="btn-primary" 
-            onClick={handleUseCloud}
+            onClick={handleUseCloud} 
             disabled={isResolving}
           >
-            ☁️ Use Cloud Settings Everywhere
-            <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '4px' }}>Overwrites this device with your cloud profile.</div>
+            {isResolving ? 'Syncing...' : '☁️ Use Cloud Settings'}
           </button>
-          
           <button 
             className="btn-secondary" 
-            style={{ border: '1px solid var(--accent-emerald)', color: 'var(--accent-emerald)' }}
-            onClick={handleUseLocal}
+            onClick={handleUseLocal} 
             disabled={isResolving}
           >
-            📱 Use Local Settings Everywhere
-            <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '4px' }}>Overwrites your cloud profile with this device's settings.</div>
+            {isResolving ? 'Syncing...' : '📱 Use Local Settings (Overwrite Cloud)'}
           </button>
-
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '8px 0' }}></div>
           <button 
             className="btn-secondary" 
-            style={{ border: '1px solid #ef4444', color: '#ef4444', marginTop: '10px' }}
-            onClick={handleLogout}
-            disabled={isResolving}
+            onClick={handleCancel} 
           >
-            Cancel and Sign Out
+            Cancel
           </button>
+          {syncError && (
+            <div style={{ color: '#ef4444', fontSize: '0.85rem', textAlign: 'center', marginTop: '8px', padding: '8px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '4px' }}>
+              {syncError}
+            </div>
+          )}
         </div>
       </div>
     </div>
