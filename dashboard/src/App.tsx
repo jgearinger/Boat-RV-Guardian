@@ -7,7 +7,7 @@ import { usePushNotifications } from './hooks/usePushNotifications';
 import { auth, onAuthStateChanged } from './services/firebase';
 import SyncModal from './components/SyncModal';
 import Login from './pages/Login';
-import { isLocalProfileFresh } from './utils/configSync';
+import { hasActiveVehicle, createLocalVehicle } from './utils/VehicleManager';
 
 type AppView = 'home' | 'fresh_water' | 'high_water' | 'batteries' | 'shore_power' | 'settings';
 
@@ -16,53 +16,64 @@ export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  // First-run login prompt: shown when the app opens unauthenticated on an untouched profile.
-  // Dismissable; once dismissed (or once the user signs in) it stays gone for the session.
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const [loginPromptDismissed, setLoginPromptDismissed] = useState(false);
+  // Onboarding gate: with no vehicle the app is locked until the user signs in (cloud vehicles
+  // get adopted) or explicitly creates a local vehicle. We no longer auto-create a vehicle.
+  const [hasVehicle, setHasVehicle] = useState(() => hasActiveVehicle());
+
+  useEffect(() => {
+    const sync = () => setHasVehicle(hasActiveVehicle());
+    window.addEventListener('settings_updated', sync);
+    window.addEventListener('role_updated', sync);
+    return () => { window.removeEventListener('settings_updated', sync); window.removeEventListener('role_updated', sync); };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
-      if (currentUser) {
-        setShowLoginPrompt(false);
-      } else if (!loginPromptDismissed && isLocalProfileFresh()) {
-        setShowLoginPrompt(true);
-      }
+      setHasVehicle(hasActiveVehicle());
     });
     return () => unsubscribe();
-  }, [loginPromptDismissed]);
+  }, []);
 
   if (loading) {
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: 'var(--accent)' }}>Loading...</div>;
   }
 
+  // No vehicle yet → block the app with an onboarding screen (sign in or create a local vehicle).
+  // SyncModal stays mounted so that signing in here still adopts the user's cloud vehicles.
+  if (!hasVehicle) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', width: '100%', alignItems: 'center', justifyContent: 'center', padding: '24px', gap: '20px', overflowY: 'auto' }}>
+        <SyncModal />
+        <div style={{ width: '60px', height: '60px', backgroundImage: 'url(/app_icon.jpg)', backgroundSize: 'cover', borderRadius: '14px', boxShadow: '0 0 14px rgba(0,242,254,0.4)' }} />
+        <h1 style={{ margin: 0, fontSize: '1.5rem', textAlign: 'center', background: 'linear-gradient(90deg,#fff,#00f2fe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Boat &amp; RV Guardian</h1>
+        {user ? (
+          <div className="card" style={{ width: '100%', maxWidth: '420px', padding: '24px', textAlign: 'center' }}>
+            <p style={{ color: 'var(--text-secondary)' }}>Setting up your vehicles… If nothing appears, create your first vehicle to get started.</p>
+            <button className="btn-primary" style={{ marginTop: '12px' }} onClick={() => { createLocalVehicle(); setHasVehicle(true); }}>Create a Vehicle</button>
+          </div>
+        ) : (
+          <div style={{ width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', margin: 0 }}>
+              Sign in to sync your vehicles across devices, or start a local vehicle with no account.
+            </p>
+            <Login />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-muted)' }}>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} /><span style={{ fontSize: '0.8rem' }}>OR</span><div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+            </div>
+            <button className="btn-secondary" onClick={() => { createLocalVehicle(); setHasVehicle(true); }}>
+              📱 Create a Local Vehicle (no account)
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
       <SyncModal />
-      {showLoginPrompt && !user && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.8)', zIndex: 10000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backdropFilter: 'blur(5px)'
-        }}>
-          <div style={{ position: 'relative', width: '100%', maxWidth: '440px' }}>
-            <button
-              onClick={() => { setShowLoginPrompt(false); setLoginPromptDismissed(true); }}
-              aria-label="Close"
-              style={{
-                position: 'absolute', top: '8px', right: '8px', zIndex: 1,
-                background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
-                fontSize: '1.4rem', lineHeight: 1, width: '32px', height: '32px',
-                borderRadius: '50%', cursor: 'pointer'
-              }}
-            >×</button>
-            <Login />
-          </div>
-        </div>
-      )}
       <header style={{ padding: '20px', background: 'var(--bg-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexShrink: 0, zIndex: 11 }}>
         <div style={{
           width: '45px',

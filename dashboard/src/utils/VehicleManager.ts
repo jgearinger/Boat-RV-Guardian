@@ -85,47 +85,51 @@ export function saveVehiclesMap(map: Record<string, Vehicle>) {
   localStorage.setItem('lt_vehicles', JSON.stringify(map));
 }
 
+// Returns the active vehicle id, or '' if none exists. Does NOT auto-create — onboarding
+// (App.tsx) requires the user to log in or explicitly create a local vehicle first.
 export function getActiveVehicleId(): string {
-  let id = localStorage.getItem('lt_active_vehicle_id');
-  if (!id) {
-    // If no active vehicle exists, initialize one with current root keys to preserve existing user data
-    const map = getVehiclesMap();
-    id = generateVehicleId();
-    const currentConfig: Record<string, string> = {};
-    for (const key of VEHICLE_KEYS) {
-      currentConfig[key] = localStorage.getItem(key) || VEHICLE_DEFAULT_CONFIG[key];
-    }
-    // Set a default name if it was empty
-    if (!currentConfig.lt_vessel_name) {
-      currentConfig.lt_vessel_name = 'My First Vessel';
-      localStorage.setItem('lt_vessel_name', 'My First Vessel');
-    }
-    // Generate a Shelly local password for this vehicle if one isn't set
-    if (!currentConfig.sh_local_password) {
-      currentConfig.sh_local_password = generateShellyPassword();
-      localStorage.setItem('sh_local_password', currentConfig.sh_local_password);
-    }
-    map[id] = { id, config: currentConfig };
-    saveVehiclesMap(map);
-    localStorage.setItem('lt_active_vehicle_id', id);
-  }
-  return id;
+  return localStorage.getItem('lt_active_vehicle_id') || '';
 }
 
-// Ensure an active vehicle exists on module load
-getActiveVehicleId();
+export function hasActiveVehicle(): boolean {
+  const id = getActiveVehicleId();
+  return !!id && !!getVehiclesMap()[id];
+}
+
+// Explicitly create the first/local vehicle (used by the onboarding "Create a local vehicle"
+// action), seeding from any existing root keys, then make it active.
+export function createLocalVehicle(name: string = 'My First Vehicle'): string {
+  const map = getVehiclesMap();
+  const id = generateVehicleId();
+  const config: Record<string, string> = {};
+  for (const key of VEHICLE_KEYS) {
+    config[key] = localStorage.getItem(key) || VEHICLE_DEFAULT_CONFIG[key];
+  }
+  config.lt_vessel_name = name;
+  localStorage.setItem('lt_vessel_name', name);
+  if (!config.sh_local_password) {
+    config.sh_local_password = generateShellyPassword();
+    localStorage.setItem('sh_local_password', config.sh_local_password);
+  }
+  map[id] = { id, config };
+  saveVehiclesMap(map);
+  localStorage.setItem('lt_active_vehicle_id', id);
+  dispatchSettingsUpdatedGuarded();
+  return id;
+}
 
 /**
  * Saves the current active configuration from root localStorage into the active vehicle profile.
  */
 export function syncRootToActiveVehicle() {
   const activeId = getActiveVehicleId();
+  if (!activeId) return; // nothing active yet (onboarding) — nothing to back up
   const map = getVehiclesMap();
-  
+
   if (!map[activeId]) {
     map[activeId] = { id: activeId, config: {} };
   }
-  
+
   for (const key of VEHICLE_KEYS) {
     map[activeId].config[key] = localStorage.getItem(key) || VEHICLE_DEFAULT_CONFIG[key];
   }
@@ -153,7 +157,7 @@ export function switchVehicle(newId: string) {
   dispatchSettingsUpdatedGuarded();
 }
 
-export function addNewVehicle(name: string = 'New Vessel') {
+export function addNewVehicle(name: string = 'New Vehicle') {
   const map = getVehiclesMap();
   const id = generateVehicleId();
   const newConfig = { ...VEHICLE_DEFAULT_CONFIG, lt_vessel_name: name, sh_local_password: generateShellyPassword() };

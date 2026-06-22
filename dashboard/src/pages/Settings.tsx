@@ -15,7 +15,7 @@ import {
 import ProvisionShellyModal from '../components/ProvisionShellyModal';
 import ProvisionLinkTapModal from '../components/ProvisionLinkTapModal';
 
-const APP_VERSION = '1.0.32';
+const APP_VERSION = '1.0.33';
 
 
 
@@ -505,7 +505,7 @@ export default function Settings({ user }: { user: any }) {
   };
 
   const confirmAddNewVehicle = () => {
-    const newVid = addNewVehicle(newVehicleNameInput || 'New Vessel');
+    const newVid = addNewVehicle(newVehicleNameInput || 'New Vehicle');
     switchVehicle(newVid);
     setShowNewVehicleModal(false);
   };

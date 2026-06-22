@@ -53,7 +53,7 @@ jobs:
         run: |
           npm i -g wrangler
           DMG_FILE=$(find src-tauri/target/release/bundle/dmg -name "*.dmg" | head -n 1)
-          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.dmg "$DMG_FILE"
+          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.dmg --file "$DMG_FILE" --remote
 
       - name: Upload Windows EXE to Cloudflare R2
         if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
@@ -65,7 +65,7 @@ jobs:
         run: |
           npm i -g wrangler
           EXE_FILE=$(find src-tauri/target/release/bundle/nsis -name "*.exe" | head -n 1)
-          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.exe "$EXE_FILE"
+          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.exe --file "$EXE_FILE" --remote
 
   release-android:
     runs-on: ubuntu-latest
@@ -140,4 +140,4 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           npm i -g wrangler
-          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.apk boat-rv-guardian-release.apk
+          wrangler r2 object put brg-downloads/boat-rv-guardian_latest.apk --file boat-rv-guardian-release.apk --remote

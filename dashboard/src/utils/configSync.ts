@@ -58,7 +58,7 @@ export const VEHICLE_DEFAULT_CONFIG: Record<string, string> = {
   lt_shore_low_v: '100',
   lt_shore_high_v: '128',
   lt_shore_crit_high_v: '135',
-  lt_vessel_name: 'New Vessel',
+  lt_vessel_name: 'New Vehicle',
   sh_local_password: '', // per-vehicle Shelly local device password (auto-generated on create)
   lt_devices: '[]'
 };
@@ -78,7 +78,9 @@ export function isLocalVehicleConfigDefault(): boolean {
 // Whether the current root profile is "untouched" — all defaults except the vessel name,
 // which is auto-populated on first run ("My First Vessel") and therefore not a signal of
 // real user data. Used on login to decide whether it's safe to silently adopt the cloud.
-const FRESHNESS_IGNORE_KEYS = ['lt_vessel_name'];
+// lt_vessel_name (auto-named) and sh_local_password (auto-generated per vehicle) are not signals
+// of real user data, so they must not make a brand-new profile look "non-fresh".
+const FRESHNESS_IGNORE_KEYS = ['lt_vessel_name', 'sh_local_password'];
 export function isLocalProfileFresh(): boolean {
   for (const key of VEHICLE_KEYS) {
     if (FRESHNESS_IGNORE_KEYS.includes(key)) continue;
