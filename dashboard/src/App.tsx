@@ -98,7 +98,7 @@ export default function App() {
           onClick={() => setCurrentView('home')}
           style={{ padding: '8px 16px', fontSize: '0.9rem', boxShadow: 'none' }}
         >
-          🏠 Home
+          📊 Dashboard
         </button>
         <button 
           className={currentView === 'fresh_water' ? 'btn-primary' : 'btn-secondary'} 

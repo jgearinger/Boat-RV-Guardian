@@ -5,34 +5,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   plugins: [
     react(),
+    // A service worker is harmful in the native (Tauri/Capacitor) app: assets are already served
+    // locally, and the SW's precache served STALE chunks across app updates (new dynamic imports
+    // like shellyBle 404'd against an old cached index.html). selfDestroying ships a worker that
+    // unregisters any previously-installed SW and clears its caches, then removes itself.
     VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg}']
-      },
-      manifest: {
-        name: 'Boat & Rv Guardian',
-        short_name: 'Guardian',
-        description: 'A smart dashboard for using LinkTap as a burst pipe auto-shutoff system.',
-        theme_color: '#1e293b',
-        background_color: '#0f172a',
-        display: 'standalone',
-        start_url: '/',
-        icons: [
-          {
-            src: 'app_icon_192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'app_icon_512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      }
+      selfDestroying: true,
     })
   ],
   base: './',

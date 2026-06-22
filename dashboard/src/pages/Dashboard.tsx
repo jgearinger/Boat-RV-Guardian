@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { getDevices, type DeviceConfig } from '../utils/VehicleManager';
 import LinkTapWidget from '../components/LinkTapWidget';
-import ShellyWidget from '../components/ShellyWidget';
 
 export default function Dashboard() {
   const [devices, setDevices] = useState<DeviceConfig[]>([]);
 
   useEffect(() => {
     const load = () => {
-      setDevices(getDevices());
+      // Fresh Water page shows only LinkTap valves; Shelly sensors live on their own category pages.
+      setDevices(getDevices().filter(d => d.type === 'linktap_valve'));
     };
     load();
     window.addEventListener('settings_updated', load);
@@ -25,16 +25,11 @@ export default function Dashboard() {
         </h1>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-          {devices.map((device, idx) => {
-            if (device.type === 'linktap_valve') {
-              return <LinkTapWidget key={device.id || idx} device={device} />;
-            } else if (device.type === 'shelly_sensor') {
-              return <ShellyWidget key={device.id || idx} device={device} />;
-            }
-            return null;
-          })}
+          {devices.map((device, idx) => (
+            <LinkTapWidget key={device.id || idx} device={device} />
+          ))}
 
-          {devices.filter(d => d.type === 'linktap_valve' || d.type === 'shelly_sensor').length === 0 && (
+          {devices.length === 0 && (
             <div className="glass-card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px' }}>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>No Fresh Water LinkTap devices configured.</p>
             </div>

@@ -1,12 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { auth, db } from '../services/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export function usePushNotifications() {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
+
+  // Persist the device's FCM token to the signed-in user's doc so the worker can push to them.
+  const saveToken = (t: string | null) => {
+    const uid = auth.currentUser?.uid;
+    if (t && uid) setDoc(doc(db, 'users', uid), { fcmToken: t }, { merge: true }).catch(() => {});
+  };
 
   useEffect(() => {
     let isMounted = true;
+    // If the token arrived before login, write it once the user signs in.
+    const unsubAuth = onAuthStateChanged(auth, (u) => { if (u) saveToken(tokenRef.current); });
 
     const registerPush = async () => {
       // Push notifications only work on Android and iOS physical devices
@@ -29,20 +41,9 @@ export function usePushNotifications() {
         PushNotifications.addListener('registration', async (token) => {
           if (!isMounted) return;
           console.log('Push registration success, token: ' + token.value);
+          tokenRef.current = token.value;
           setFcmToken(token.value);
-          
-          // Send token to our Cloudflare Worker
-          try {
-            // REPLACE THIS URL with the deployed Cloudflare worker URL
-            const WORKER_URL = 'https://boat-rv-guardian-notifications.YOUR_USERNAME.workers.dev/register';
-            await fetch(WORKER_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: token.value }),
-            });
-          } catch (e) {
-            console.error('Failed to send FCM token to Cloudflare:', e);
-          }
+          saveToken(token.value); // store on the user's Firestore doc for the worker to read
         });
 
         PushNotifications.addListener('registrationError', (error: any) => {
@@ -66,6 +67,7 @@ export function usePushNotifications() {
 
     return () => {
       isMounted = false;
+      unsubAuth();
       if (Capacitor.getPlatform() !== 'web') {
         PushNotifications.removeAllListeners();
       }

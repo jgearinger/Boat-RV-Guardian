@@ -21,7 +21,7 @@ const listenTauri = async (event: string, handler: (e: any) => void) => {
   return () => {};
 };
 
-const APP_VERSION = '1.0.35';
+const APP_VERSION = '1.0.36';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST' && !url.startsWith('https://')) {
@@ -213,6 +213,7 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
   }, [connectionStatus, errorMsg]);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyTab, setHistoryTab] = useState<'hourly'|'daily'|'weekly'|'monthly'>('daily');
+  const [showAutoRestartModal, setShowAutoRestartModal] = useState(false);
 
   // --- Manual Irrigation Inputs ---
   const [inputDuration, setInputDuration] = useState(() => Number(localStorage.getItem(`lt_input_dur_${deviceId}`) || '15'));
@@ -737,6 +738,9 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
           }
         }
         
+        // NOTE: Auto-restart is driven entirely by the app — it only loops while the app is open
+        // and polling. TODO(future): move this to a cloud worker so it can watch the device and
+        // restart the Normal Run timer even when the app is closed.
         if (stateRef.current.isWatering && !newIsWatering && stateRef.current.autoRestartNormal) {
           const naturalExpiration = stateRef.current.remainDuration <= (effectiveInterval + 15);
           if (manualStopTriggeredRef.current || !naturalExpiration) {
@@ -1461,9 +1465,13 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
                   <span style={{ color: 'var(--text-secondary)' }}>Configured Volume Limit:</span>
                   <span style={{ fontWeight: 'bold' }}>{normalRunVolume} {volUnit}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--text-secondary)' }}>Auto Restart (Loop):</span>
-                  <span style={{ fontWeight: 'bold', color: autoRestartNormal ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>{autoRestartNormal ? 'ENABLED' : 'DISABLED'}</span>
+                  <button
+                    onClick={() => setShowAutoRestartModal(true)}
+                    title="Tap to change"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', padding: '3px 10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', color: autoRestartNormal ? 'var(--accent-cyan)' : 'var(--text-muted)' }}
+                  >{autoRestartNormal ? 'ENABLED' : 'DISABLED'} ▾</button>
                 </div>
               </div>
               <button
@@ -1686,6 +1694,44 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
       )}
 
       {/* Usage History Modal */}
+      {showAutoRestartModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(4,8,20,0.85)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>
+            <button onClick={() => setShowAutoRestartModal(false)} className="btn-secondary" style={{ position: 'absolute', top: '20px', right: '20px', padding: '6px 10px', fontSize: '1rem', zIndex: 10 }}>✕</button>
+
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '4px' }}>🔁 Auto Restart (Loop)</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>When the Normal Run profile expires naturally, automatically restart it after a few seconds.</p>
+
+            {!canControl && (
+              <div style={{ padding: '10px', background: 'rgba(255,200,0,0.1)', borderLeft: '3px solid #fde68a', borderRadius: '4px', fontSize: '0.75rem', color: '#fde68a' }}>
+                You have monitor-only access and cannot change this setting.
+              </div>
+            )}
+
+            {autoRestartNormal && (
+              <div style={{ padding: '10px', background: 'rgba(255,200,0,0.1)', borderLeft: '3px solid #fde68a', borderRadius: '4px', fontSize: '0.75rem', color: '#fde68a' }}>
+                <strong>⚠️ Keep the app open.</strong> The restart is triggered by this app, so it must stay open and connected for the loop to continue. If the app is closed when a cycle ends, it won't restart.
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                disabled={!canControl}
+                onClick={() => { setAutoRestartNormal(false); setShowAutoRestartModal(false); }}
+                className="btn-secondary"
+                style={{ flex: 1, padding: '12px', fontSize: '0.9rem', fontWeight: 700, opacity: canControl ? 1 : 0.5, background: !autoRestartNormal ? 'var(--text-muted)' : 'rgba(255,255,255,0.05)', color: !autoRestartNormal ? '#000' : 'var(--text-primary)' }}
+              >DISABLED</button>
+              <button
+                disabled={!canControl}
+                onClick={() => { setAutoRestartNormal(true); setShowAutoRestartModal(false); }}
+                className="btn-secondary"
+                style={{ flex: 1, padding: '12px', fontSize: '0.9rem', fontWeight: 700, opacity: canControl ? 1 : 0.5, background: autoRestartNormal ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.05)', color: autoRestartNormal ? '#000' : 'var(--text-primary)' }}
+              >ENABLED</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showHistoryModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(4,8,20,0.85)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
            <div className="glass-card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>

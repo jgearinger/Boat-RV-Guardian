@@ -15,7 +15,7 @@ import {
 import ProvisionShellyModal from '../components/ProvisionShellyModal';
 import ProvisionLinkTapModal from '../components/ProvisionLinkTapModal';
 
-const APP_VERSION = '1.0.35';
+const APP_VERSION = '1.0.36';
 
 
 
@@ -141,6 +141,7 @@ export default function Settings({ user }: { user: any }) {
   const [vesselNickname, setVesselNickname] = useState(() => localStorage.getItem('lt_vessel_name') || '');
   const [shellyLocalPassword, setShellyLocalPassword] = useState(() => localStorage.getItem('sh_local_password') || '');
   const [showShellyPw, setShowShellyPw] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState(() => localStorage.getItem('sh_webhook_url') || '');
   
   // Normal Run Profile Config
   const [normalRunHours, setNormalRunHours] = useState(() => Number(localStorage.getItem('lt_nr_hrs') || '0'));
@@ -244,6 +245,7 @@ export default function Settings({ user }: { user: any }) {
       setUnitSystem(localStorage.getItem('lt_unit') as 'metric' | 'imperial' || 'imperial');
       setTimeZone(localStorage.getItem('lt_tz') || ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'));
       setShellyLocalPassword(localStorage.getItem('sh_local_password') || '');
+      setWebhookUrl(localStorage.getItem('sh_webhook_url') || '');
       setVesselNickname(localStorage.getItem('lt_vessel_name') || '');
       setNormalRunHours(Number(localStorage.getItem('lt_nr_hrs') || '0'));
       setNormalRunMinutes(Number(localStorage.getItem('lt_nr_mins') || '0'));
@@ -319,6 +321,7 @@ export default function Settings({ user }: { user: any }) {
     localStorage.setItem('lt_store_history_cloud', storeHistoryCloud.toString());
     localStorage.setItem('lt_vessel_name', vesselNickname);
     localStorage.setItem('sh_local_password', shellyLocalPassword);
+    localStorage.setItem('sh_webhook_url', webhookUrl.trim());
     localStorage.setItem('lt_unit', unitSystem);
     localStorage.setItem('lt_tz', timeZone);
     localStorage.setItem('lt_nr_hrs', normalRunHours.toString());
@@ -372,7 +375,7 @@ export default function Settings({ user }: { user: any }) {
     window.dispatchEvent(new Event('settings_updated'));
     syncDispatchRef.current = false;
   }, [
-    syncSettingsCloud, storeHistoryCloud, vesselNickname, shellyLocalPassword, unitSystem, timeZone,
+    syncSettingsCloud, storeHistoryCloud, vesselNickname, shellyLocalPassword, webhookUrl, unitSystem, timeZone,
     normalRunHours, normalRunMinutes, normalRunDaily, normalRunVolume, autoRestartNormal,
     isCloudPollingActive, isLocalPollingActive, cloudUsername, cloudApiKey,
     gatewayIp, gatewayId, primaryDeviceId, secondaryDeviceId,
@@ -845,9 +848,18 @@ export default function Settings({ user }: { user: any }) {
                 );
               })()}
 
+              {/* Cloud Alerts worker URL */}
+              <div style={{ marginTop: '16px' }}>
+                <label className="form-label">Cloud Alert Worker URL</label>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 6px 0' }}>
+                  Your deployed Cloudflare worker (e.g. <code>https://boat-rv-guardian-webhooks.&lt;you&gt;.workers.dev</code>). Required for Shelly devices to push away-from-home alerts. Set this before adding devices.
+                </p>
+                <input className="form-input" type="url" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://…workers.dev" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+              </div>
+
               {/* Manual Sync Button */}
               <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button 
+                <button
                   className="btn-primary"
                   onClick={handleManualSync}
                   disabled={isManualSyncing}

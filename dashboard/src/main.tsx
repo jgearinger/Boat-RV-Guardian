@@ -38,13 +38,13 @@ root.render(
   </StrictMode>,
 )
 
-// Register service worker for offline/PWA support
-// Only works on web/localhost - skip on Capacitor native (uses custom URL scheme)
-const isCapacitor = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor.isNativePlatform?.();
-if (!isCapacitor && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
-      .catch((err) => console.error('Service Worker registration failed:', err));
-  });
+// No service worker: in the native app it caches stale chunks across updates. Actively remove any
+// previously-registered SW and clear its caches so the app always loads fresh local assets.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then((regs) => regs.forEach((r) => r.unregister()))
+    .catch(() => {});
+}
+if (typeof caches !== 'undefined') {
+  caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
 }

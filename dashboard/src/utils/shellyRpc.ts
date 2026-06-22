@@ -64,6 +64,37 @@ export async function shellyRpc(ip: string, method: string, params: any = {}, pa
   return second.data?.result ?? second.data;
 }
 
+/**
+ * Register cloud-alert webhooks on a Shelly. `call` runs one RPC (works over HTTP or BLE), so this
+ * is transport-agnostic. Discovers the device's supported events and points the alert-relevant ones
+ * at `${baseUrl}/api/shelly?vid=…&event=…`. Returns the events it successfully registered.
+ */
+export async function registerShellyWebhooks(
+  call: (method: string, params: any) => Promise<any>,
+  baseUrl: string,
+  vid: string,
+): Promise<string[]> {
+  let supported: string[] = [];
+  try {
+    const sup = await call('Webhook.ListSupported', {});
+    supported = sup?.hook_types || (sup?.types ? Object.keys(sup.types) : []) || [];
+  } catch { /* device may not support discovery */ }
+
+  const alertish = supported.filter((e) => /flood|alarm|leak|smoke|over|under|sensor|temperature|motion|opened|closed|btn/i.test(e));
+  const events = (alertish.length ? alertish : supported).slice(0, 8); // cap to avoid spamming
+  const root = baseUrl.replace(/\/$/, '');
+
+  const created: string[] = [];
+  for (const event of events) {
+    const url = `${root}/api/shelly?vid=${encodeURIComponent(vid)}&event=${encodeURIComponent(event)}`;
+    try {
+      await call('Webhook.Create', { cid: 0, enable: true, event, urls: [url] });
+      created.push(event);
+    } catch { /* skip events that need a different cid/format */ }
+  }
+  return created;
+}
+
 /** Secure a device by setting its admin password (HA1). Call on a reachable, unsecured device. */
 export async function shellySetPassword(ip: string, deviceId: string, password: string): Promise<void> {
   const ha1 = await sha256Hex(`admin:${deviceId}:${password}`);

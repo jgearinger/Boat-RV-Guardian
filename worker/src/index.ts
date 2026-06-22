@@ -17,7 +17,7 @@ async function getFirebaseAccessToken(env: Env): Promise<string> {
     iss: env.FIREBASE_CLIENT_EMAIL,
     sub: env.FIREBASE_CLIENT_EMAIL,
     aud: 'https://oauth2.googleapis.com/token',
-    scope: 'https://www.googleapis.com/auth/datastore'
+    scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/firebase.messaging'
   })
     .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
     .setIssuedAt()
@@ -100,6 +100,60 @@ async function triggerLinkTapShutoff(config: any): Promise<void> {
   }
 }
 
+/**
+ * Reads a Firestore document and returns its raw `fields` object (REST value-wrapped).
+ */
+async function getFirestoreDoc(env: Env, token: string, path: string): Promise<any | null> {
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${path}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const data: any = await res.json();
+  return data.fields || null;
+}
+
+const strField = (fields: any, key: string): string => fields?.[key]?.stringValue || '';
+const arrField = (fields: any, key: string): string[] =>
+  (fields?.[key]?.arrayValue?.values || []).map((v: any) => v.stringValue).filter(Boolean);
+
+/** Send an FCM HTTP v1 push to a single registration token. */
+async function sendFcmPush(env: Env, token: string, fcmToken: string, title: string, body: string): Promise<void> {
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: { token: fcmToken, notification: { title, body } } }),
+  });
+  if (!res.ok) console.warn(`FCM send failed: ${res.status} ${await res.text()}`);
+}
+
+/**
+ * Shelly sensor webhook → push the alert to everyone who has access to the vehicle.
+ * The device is provisioned to call /api/shelly?vid=<id>&event=<event>.
+ */
+async function handleShellyWebhook(env: Env, url: URL): Promise<Response> {
+  const vid = url.searchParams.get('vid');
+  const event = url.searchParams.get('event') || 'sensor alert';
+  if (!vid) return new Response('Missing vid', { status: 400 });
+
+  const token = await getFirebaseAccessToken(env);
+  const vehicle = await getFirestoreDoc(env, token, `vehicles/${vid}`);
+  if (!vehicle) return new Response('Vehicle not found', { status: 404 });
+
+  const name = strField(vehicle, 'lt_vessel_name') || 'your vehicle';
+  const uids = arrField(vehicle, 'allowedUsers');
+  const title = `🚨 ${name}`;
+  const body = `Sensor alert: ${event}`;
+
+  let sent = 0;
+  for (const uid of uids) {
+    const user = await getFirestoreDoc(env, token, `users/${uid}`);
+    const fcmToken = strField(user, 'fcmToken');
+    if (fcmToken) { await sendFcmPush(env, token, fcmToken, title, body); sent++; }
+  }
+  return new Response(JSON.stringify({ status: 'ok', notified: sent, event }), {
+    headers: { 'Content-Type': 'application/json' }, status: 200,
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method !== 'POST') {
@@ -108,6 +162,13 @@ export default {
 
     try {
       const url = new URL(request.url);
+
+      // Shelly sensor alerts → push notifications to the vehicle's members.
+      if (url.pathname === '/api/shelly') {
+        return await handleShellyWebhook(env, url);
+      }
+
+      // Default (legacy) path: LinkTap auto-shutoff webhook.
       const vid = url.searchParams.get('vid');
       if (!vid) {
         return new Response('Missing vid parameter', { status: 400 });
