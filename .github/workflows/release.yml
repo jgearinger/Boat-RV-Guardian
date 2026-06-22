@@ -45,6 +45,8 @@ jobs:
           prerelease: false
 
       - name: Upload macOS DMG to Cloudflare R2
+        # Best-effort CDN mirror; the GitHub release already holds the binaries.
+        continue-on-error: true
         if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_EDIT }}
@@ -56,6 +58,7 @@ jobs:
           wrangler r2 object put brg-downloads/boat-rv-guardian_latest.dmg --file "$DMG_FILE" --remote
 
       - name: Upload Windows EXE to Cloudflare R2
+        continue-on-error: true
         if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_EDIT }}
@@ -134,6 +137,7 @@ jobs:
           files: boat-rv-guardian-release.apk
 
       - name: Upload Android APK to Cloudflare R2
+        continue-on-error: true
         if: startsWith(github.ref, 'refs/tags/')
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_EDIT }}
