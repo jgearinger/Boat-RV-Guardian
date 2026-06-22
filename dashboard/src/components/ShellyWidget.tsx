@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { DeviceConfig } from '../utils/VehicleManager';
+import { nativeFetch } from '../utils/nativeFetch';
 
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
 
@@ -12,14 +13,16 @@ const unifiedFetch = async (url: string, options?: any) => {
       body: options?.body
     });
   }
-  return fetch(url, options);
+  return nativeFetch(url, options) as any;
 };
 
 export default function ShellyWidget({ device }: { device: DeviceConfig }) {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'local' | 'cloud' | null>(null);
   const [shellyServer, setShellyServer] = useState('');
   const [shellyAuthKey, setShellyAuthKey] = useState('');
+  const localIp = device.localIp;
 
   useEffect(() => {
     setShellyServer(localStorage.getItem('sh_server') || '');
@@ -27,28 +30,45 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
   }, []);
 
   const fetchStatus = async () => {
-    if (!shellyServer || !shellyAuthKey) return;
-    try {
-      const res = await unifiedFetch(`https://${shellyServer}/device/status?id=${device.id}&auth_key=${shellyAuthKey}`);
-      const json = await res.json();
-      if (json.isok && json.data && json.data.device_status) {
-        setData(json.data.device_status);
-        setError(null);
-      } else {
-        setError('Offline or Invalid');
-      }
-    } catch (e) {
-      setError('Fetch Error');
+    // Prefer local RPC when the device IP is known — faster, no cloud dependency.
+    // Shelly.GetStatus returns the same status shape the cloud reports as device_status.
+    if (localIp) {
+      try {
+        const res = await unifiedFetch(`http://${localIp}/rpc/Shelly.GetStatus`);
+        const json = await res.json();
+        if (json && !json.error) {
+          setData(json);
+          setSource('local');
+          setError(null);
+          return;
+        }
+      } catch { /* fall back to cloud below */ }
+    }
+
+    if (shellyServer && shellyAuthKey) {
+      try {
+        const res = await unifiedFetch(`https://${shellyServer}/device/status?id=${device.id}&auth_key=${shellyAuthKey}`);
+        const json = await res.json();
+        if (json.isok && json.data && json.data.device_status) {
+          setData(json.data.device_status);
+          setSource('cloud');
+          setError(null);
+          return;
+        }
+      } catch { /* ignore */ }
+      setError('Offline or Invalid');
+    } else if (localIp) {
+      setError('Unreachable on local network');
     }
   };
 
   useEffect(() => {
-    if (shellyServer && shellyAuthKey) {
-      fetchStatus();
-      const interval = setInterval(fetchStatus, 15000);
-      return () => clearInterval(interval);
-    }
-  }, [shellyServer, shellyAuthKey, device.id]);
+    if (!localIp && !(shellyServer && shellyAuthKey)) return;
+    fetchStatus();
+    // Local polling can be brisk; cloud is rate-limited so keep it slower.
+    const interval = setInterval(fetchStatus, localIp ? 8000 : 15000);
+    return () => clearInterval(interval);
+  }, [localIp, shellyServer, shellyAuthKey, device.id]);
 
   let content = <div style={{ color: 'var(--text-muted)' }}>Loading...</div>;
 
@@ -94,6 +114,13 @@ export default function ShellyWidget({ device }: { device: DeviceConfig }) {
         <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--accent-orange)' }}>
           {device.name || `Shelly ${device.role}`}
         </h3>
+        {source && (
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', padding: '2px 8px', borderRadius: '10px',
+            color: source === 'local' ? '#10b981' : 'var(--accent-cyan)',
+            background: source === 'local' ? 'rgba(16,185,129,0.12)' : 'rgba(0,242,254,0.1)' }}>
+            {source === 'local' ? '🏠 LOCAL' : '☁️ CLOUD'}
+          </span>
+        )}
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '20px', textAlign: 'center' }}>
         {content}

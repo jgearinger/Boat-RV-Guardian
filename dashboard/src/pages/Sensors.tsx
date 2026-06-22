@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { nativeFetch } from '../utils/nativeFetch';
 
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
 
@@ -11,7 +12,7 @@ const unifiedFetch = async (url: string, options?: any) => {
       body: options?.body
     });
   }
-  return fetch(url, options);
+  return nativeFetch(url, options) as any;
 };
 
 export default function Sensors({ category }: { category: 'flood' | 'batteries' | 'shore_power' }) {

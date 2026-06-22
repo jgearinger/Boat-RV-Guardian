@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { type DeviceConfig } from '../utils/VehicleManager';
+import { type DeviceConfig, getActiveVehicleId } from '../utils/VehicleManager';
+import { formatTime, formatDate, getDisplayTimeZone } from '../utils/time';
+import { pushDeviceHistory, fetchDeviceHistory, recentMonthsUTC } from '../utils/historySync';
+import { auth } from '../services/firebase';
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
 
 const invokeTauri = async (cmd: string, args?: any) => {
@@ -18,7 +21,7 @@ const listenTauri = async (event: string, handler: (e: any) => void) => {
   return () => {};
 };
 
-const APP_VERSION = '1.0.26';
+const APP_VERSION = '1.0.32';
 
 const unifiedFetch = async (url: string, options?: any) => {
   if (isTauriEnv() && options?.method === 'POST' && !url.startsWith('https://')) {
@@ -84,13 +87,13 @@ const unifiedFetch = async (url: string, options?: any) => {
 };
 
 interface AlertLog {
-  time: string;
+  ts: number; // epoch ms (UTC) — formatted for display via utils/time
   type: 'info' | 'warning' | 'danger' | 'success';
   message: string;
 }
 
 interface FlowData {
-  time: string;
+  ts: number; // epoch ms (UTC)
   speed: number;
 }
 
@@ -110,7 +113,7 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
     const gw = localStorage.getItem('lt_gateway_id');
     const dev = localStorage.getItem('lt_device_id');
     const cloud = localStorage.getItem('lt_cloud_user');
-    return (gw && gw !== 'GW_02_MOCK') || (dev && dev !== 'TAP_MOCK_1') || !!cloud;
+    return !!gw || !!dev || !!cloud;
   };
 
   const [isCloudPollingActive, setIsCloudPollingActive] = useState(() => {
@@ -130,13 +133,6 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
   // Pin to 31s when cloud-only (local disconnected) to respect the API rate limit.
   // Use the slider value when local is active for fast real-time telemetry.
   const pollInterval = (isLocalPollingActive && gatewayIp) ? effectiveInterval : 31;
-
-  const [mockMode, setMockMode] = useState(() => {
-    const stored = localStorage.getItem('lt_mock');
-    if (stored !== null) return stored === 'true';
-    if (hasCustomSettings()) return false;
-    return true; // Default to mock mode out of the box
-  });
 
   // --- Local Safety  // Auto-Guard settings
   const autoGuardEnabled = device.autoGuardEnabled !== false;
@@ -178,18 +174,34 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
 
   // --- Historical Data Tracking ---
   const [enableHistory, setEnableHistory] = useState(() => localStorage.getItem('lt_enable_history') !== 'false');
+  const [storeHistoryCloud, setStoreHistoryCloud] = useState(() => localStorage.getItem('lt_store_history_cloud') === 'true');
+  const historyPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Sharing role for the active vehicle ('admin' | 'control' | 'monitor'); monitor = view only.
+  const [myRole, setMyRole] = useState(() => localStorage.getItem('lt_my_role') || 'admin');
+  const canControl = myRole !== 'monitor';
+  useEffect(() => {
+    const sync = () => setMyRole(localStorage.getItem('lt_my_role') || 'admin');
+    window.addEventListener('role_updated', sync);
+    window.addEventListener('settings_updated', sync);
+    return () => { window.removeEventListener('role_updated', sync); window.removeEventListener('settings_updated', sync); };
+  }, []);
   const [usageHistory, setUsageHistory] = useState<Record<string, number>>(() => {
     try {
       return JSON.parse(localStorage.getItem(`lt_usage_history_${deviceId}`) || '{}'); } catch { return {}; }
   });
 
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'mock' | 'connecting'>('disconnected');
-  const [lastUpdated, setLastUpdated] = useState<string>('Never');
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [logs, setLogs] = useState<AlertLog[]>([
-    { time: new Date().toLocaleTimeString(), type: 'info', message: 'Boat Guard dashboard initialized.' },
-    { time: new Date().toLocaleTimeString(), type: 'info', message: 'Mock Mode enabled by default. Simulate API events below.' }
-  ]);
+  // Re-render trigger so already-rendered timestamps reformat when the user changes lt_tz.
+  const [displayTz, setDisplayTz] = useState(getDisplayTimeZone());
+  const [logs, setLogs] = useState<AlertLog[]>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(`lt_event_log_${deviceId}`) || 'null');
+      if (Array.isArray(stored) && stored.length > 0) return stored;
+    } catch { /* fall through to seed */ }
+    return [{ ts: Date.now(), type: 'info', message: 'Boat Guard dashboard initialized.' }];
+  });
   // Modal UI state is handled elsewhere now
   
   // Dispatch connection state to external listeners (Settings.tsx)
@@ -199,7 +211,6 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
     });
     window.dispatchEvent(event);
   }, [connectionStatus, errorMsg]);
-  const [showSimulatorModal, setShowSimulatorModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyTab, setHistoryTab] = useState<'hourly'|'daily'|'weekly'|'monthly'>('daily');
 
@@ -228,6 +239,7 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
       setGatewayId(localStorage.getItem('lt_gateway_id') || '');
       setRefreshInterval(Number(localStorage.getItem('lt_refresh') || '5'));
       setUnitSystem(localStorage.getItem('lt_unit') as 'metric' | 'imperial' || 'imperial');
+      setDisplayTz(getDisplayTimeZone());
       setNotificationsEnabled(localStorage.getItem('lt_notifications') === 'true');
       setAlarmSound((localStorage.getItem('lt_alarm_sound') as any) || 'beep');
       setAlarmVolume(Number(localStorage.getItem('lt_alarm_vol') || '1.0'));
@@ -236,6 +248,7 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
       setNotifyLowBattery(localStorage.getItem('lt_notif_battery') === 'true');
       setNotifyWatering(localStorage.getItem('lt_notif_watering') === 'true');
       setEnableHistory(localStorage.getItem('lt_enable_history') !== 'false');
+      setStoreHistoryCloud(localStorage.getItem('lt_store_history_cloud') === 'true');
       setInputDuration(Number(localStorage.getItem(`lt_input_dur_${deviceId}`) || '15'));
       setInputVolume(Number(localStorage.getItem(`lt_input_vol_${deviceId}`) || '50'));
       setDelayedStartMins(Number(localStorage.getItem(`lt_del_mins_${deviceId}`) || '0'));
@@ -251,7 +264,6 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
       setTargetVolume(Number(localStorage.getItem(`lt_target_vol_${deviceId}`) || '0'));
       setIsCloudPollingActive(localStorage.getItem('lt_is_cloud_polling') === 'true');
       setIsLocalPollingActive(localStorage.getItem('lt_is_local_polling') === 'true');
-      setMockMode(localStorage.getItem('lt_mock') === 'true');
     };
     
     window.addEventListener('settings_updated', handleSettingsUpdate);
@@ -321,9 +333,57 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
     localStorage.setItem(`lt_usage_history_${deviceId}`, JSON.stringify(usageHistory));
   }, [usageHistory, deviceId]);
 
+  // Persist the Event Sentry Log so it survives reloads (capped at 50 entries by addLog)
+  useEffect(() => {
+    localStorage.setItem(`lt_event_log_${deviceId}`, JSON.stringify(logs));
+  }, [logs, deviceId]);
+
+  // Cloud history (opt-in via lt_store_history_cloud): read back the last ~30 days on mount/login
+  // and merge into local state, so a new device sees prior usage & events.
+  useEffect(() => {
+    if (!storeHistoryCloud || !auth.currentUser) return;
+    let cancelled = false;
+    (async () => {
+      const { usage, events } = await fetchDeviceHistory(getActiveVehicleId(), deviceId);
+      if (cancelled) return;
+      if (Object.keys(usage).length) {
+        setUsageHistory(prev => {
+          const merged = { ...prev };
+          for (const [iso, l] of Object.entries(usage)) merged[iso] = Math.max(merged[iso] || 0, l);
+          return merged;
+        });
+      }
+      if (events.length) {
+        setLogs(prev => {
+          const seen = new Set(prev.map(l => `${l.ts}|${l.message}`));
+          const fresh = events
+            .filter(e => !seen.has(`${e.ts}|${e.message}`))
+            .map(e => ({ ts: e.ts, type: e.type as AlertLog['type'], message: e.message }));
+          return [...prev, ...fresh].sort((a, b) => b.ts - a.ts).slice(0, 50);
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [deviceId, storeHistoryCloud]);
+
+  // Cloud history: debounced push of the current/previous month's usage + events.
+  useEffect(() => {
+    if (!storeHistoryCloud || !auth.currentUser) return;
+    if (historyPushTimer.current) clearTimeout(historyPushTimer.current);
+    historyPushTimer.current = setTimeout(() => {
+      const months = new Set(recentMonthsUTC());
+      const usageRecent = Object.fromEntries(
+        Object.entries(usageHistory).filter(([iso]) => months.has(iso.slice(0, 7)))
+      );
+      const eventsRecent = logs.filter(l => months.has(new Date(l.ts).toISOString().slice(0, 7)));
+      pushDeviceHistory(getActiveVehicleId(), deviceId, usageRecent, eventsRecent).catch(() => {});
+    }, 10000);
+    return () => { if (historyPushTimer.current) clearTimeout(historyPushTimer.current); };
+  }, [usageHistory, logs, deviceId, storeHistoryCloud]);
+
   // Log message helper
   const addLog = (type: 'info' | 'warning' | 'danger' | 'success', message: string) => {
-    setLogs((prev) => [{ time: new Date().toLocaleTimeString(), type, message }, ...prev.slice(0, 49)]);
+    setLogs((prev) => [{ ts: Date.now(), type, message }, ...prev.slice(0, 49)]);
   };
 
   useEffect(() => {
@@ -536,53 +596,11 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
 
   // --- Real-time Polling Logic ---
   useEffect(() => {
-    setConnectionStatus(mockMode ? 'mock' : 'disconnected');
-    
+    setConnectionStatus('disconnected');
+
     const poll = async () => {
-      if (!isLocalPollingActive && !isCloudPollingActive && !mockMode) {
+      if (!isLocalPollingActive && !isCloudPollingActive) {
         setConnectionStatus('disconnected');
-        return;
-      }
-      if (mockMode) {
-        // Mock state updates over time
-        setLastUpdated(new Date().toLocaleTimeString());
-        setFlowHistory((prev) => {
-          const next = [...prev, { time: new Date().toLocaleTimeString().slice(-8), speed: stateRef.current.speed }];
-          return next.slice(-20); // Keep last 20 ticks
-        });
-        
-        // Count down remaining watering time
-        if (stateRef.current.isWatering && stateRef.current.remainDuration > 0) {
-          setRemainDuration((d) => {
-            const nextD = d - effectiveInterval;
-            if (nextD <= 0) {
-              setIsWatering(false);
-              setSpeed(0);
-              addLog('success', 'Watering cycle finished naturally.');
-              if (stateRef.current.autoRestartNormal) {
-                 addLog('info', 'Auto-restart is ON. Restarting Normal Run profile in 5 seconds...');
-                 setTimeout(() => {
-                    let vol = stateRef.current.normalRunVolume;
-                    if (stateRef.current.unitSystem === 'imperial') vol = vol / 0.264172;
-                    const durationMins = stateRef.current.normalRunDaily ? 1439 : (stateRef.current.normalRunHours * 60) + stateRef.current.normalRunMinutes;
-                    if (commandersRef.current.start) commandersRef.current.start(durationMins, vol);
-                 }, 5000);
-              }
-              return 0;
-            }
-            return nextD;
-          });
-          // Add small fluctuation in water speed
-          setSpeed((s) => Math.max(1, s + (Math.random() - 0.5) * 0.4));
-          const incVolume = stateRef.current.speed * (effectiveInterval / 60);
-          setVolume((v) => v + incVolume);
-          if (stateRef.current.enableHistory) {
-            const now = new Date();
-            now.setMinutes(0, 0, 0); // floor to hour
-            const bucket = now.toISOString();
-            setUsageHistory(prev => ({ ...prev, [bucket]: (prev[bucket] || 0) + incVolume }));
-          }
-        }
         return;
       }
 
@@ -832,10 +850,10 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
         setRemainDuration(Number(data.remain_duration ?? 0));
         
         setConnectionStatus('connected');
-        setLastUpdated(new Date().toLocaleTimeString());
+        setLastUpdated(Date.now());
 
         setFlowHistory((prev) => {
-          const next = [...prev, { time: new Date().toLocaleTimeString().slice(-8), speed: Number(data.speed) }];
+          const next = [...prev, { ts: Date.now(), speed: Number(data.speed) }];
           return next.slice(-20);
         });
 
@@ -856,15 +874,15 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
     
     const timer = setInterval(poll, pollInterval * 1000);
     return () => clearInterval(timer);
-  }, [gatewayIp, gatewayId, deviceId, isCloudPollingActive, isLocalPollingActive, refreshInterval, effectiveInterval, pollInterval, mockMode, manualRefresh, cloudUsername, cloudApiKey]);
+  }, [gatewayIp, gatewayId, deviceId, isCloudPollingActive, isLocalPollingActive, refreshInterval, effectiveInterval, pollInterval, manualRefresh, cloudUsername, cloudApiKey]);
 
   // --- API Action Commanders ---
   
   // cmd 6: Start watering
-  const executeStartCommand = async (durationMins: number, volumeLimitLiters: number) => {
+  const executeStartCommandRaw = async (durationMins: number, volumeLimitLiters: number) => {
     setTargetDuration(durationMins * 60);
     setTargetVolume(volumeLimitLiters);
-    if (mockMode) setVolume(0);
+    setVolume(0);
     setVolumeOffset(0);
     setDurationOffset(0);
 
@@ -875,15 +893,6 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
     setIsCommandLoading('start');
 
     addLog('info', `Sending API command: START watering. Duration: ${durationMins}m, Limit: ${volumeLimitLiters}L`);
-    
-    if (mockMode) {
-      setIsWatering(true);
-      setRemainDuration(durationMins * 60);
-      setSpeed(8.5); // Normal flow speed
-      setVolume(0);
-      addLog('success', `Valve opened. Watering started (Mock).`);
-      return;
-    }
 
     if (commandTimeoutRef.current) clearTimeout(commandTimeoutRef.current);
     setIsCommandLoading('start');
@@ -973,19 +982,19 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
     }
   };
 
-  // cmd 7: Stop watering (Emergency Button)
-  commandersRef.current.start = executeStartCommand;
+  // Automation (auto-restart, washdown) uses the raw command; user buttons use the gated wrapper.
+  commandersRef.current.start = executeStartCommandRaw;
 
+  // Monitor-only users can view but not operate the valve.
+  const executeStartCommand = (durationMins: number, volumeLimitLiters: number) => {
+    if (!canControl) { addLog('warning', '🔒 Monitor-only access — controls are disabled for your account.'); return; }
+    executeStartCommandRaw(durationMins, volumeLimitLiters);
+  };
+
+  // cmd 7: Stop watering (Emergency Button)
   const executeStopCommand = async (reason: 'manual' | 'limit' = 'manual') => {
+    if (reason === 'manual' && !canControl) { addLog('warning', '🔒 Monitor-only access — controls are disabled for your account.'); return; }
     addLog('warning', reason === 'limit' ? `⚠️ Valve turned off due to limit reached.` : `⚠️ Manual valve turn off initiated.`);
-    
-    if (mockMode) {
-      setIsWatering(false);
-      setSpeed(0);
-      setRemainDuration(0);
-      addLog('success', `Valve closed (Mock). Safe mode restored.`);
-      return;
-    }
 
     lastCommandTimeRef.current = Date.now();
     expectedWateringStateRef.current = false;
@@ -1154,26 +1163,6 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
     ctx.fill();
   }, [flowHistory]);
 
-  // --- Mock Mode Simulations Commands ---
-  const triggerMockBurst = () => {
-    setIsWatering(true);
-    setIsBroken(true);
-    setSpeed(28.5); // Dangerous burst flow rate
-    addLog('danger', '🔥 MOCK EVENT: Main pipe burst simulated! Flow spiked to 28.5 L/min.');
-  };
-
-  const triggerMockLeak = () => {
-    setIsWatering(true);
-    setIsLeak(true);
-    setSpeed(1.2); // Low leak flow
-    addLog('warning', '⚠️ MOCK EVENT: Slow weeping leak simulated (1.2 L/min).');
-  };
-
-  const triggerMockLowBattery = () => {
-    setBattery(8);
-    addLog('warning', '🔋 MOCK EVENT: Battery low alert (8% remaining).');
-  };
-
   const clearAlarms = () => {
     setIsBroken(false);
     setIsLeak(false);
@@ -1246,11 +1235,10 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <span className={`status-dot ${connectionStatus === 'connected' ? 'online' : connectionStatus}`}></span>
               <span style={{ fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                {connectionStatus === 'mock' ? 'MOCK MODE' : 
-                 connectionStatus === 'connected' ? 
-                   (isCloudPollingActive && isLocalPollingActive ? 'CLOUD & LOCAL CONNECTED' : 
-                    isCloudPollingActive ? 'CLOUD ONLY CONNECTED' : 
-                    isLocalPollingActive ? 'LOCAL ONLY CONNECTED' : 'CONNECTED') : 
+                {connectionStatus === 'connected' ?
+                   (isCloudPollingActive && isLocalPollingActive ? 'CLOUD & LOCAL CONNECTED' :
+                    isCloudPollingActive ? 'CLOUD ONLY CONNECTED' :
+                    isLocalPollingActive ? 'LOCAL ONLY CONNECTED' : 'CONNECTED') :
                  connectionStatus === 'connecting' ? 'CONNECTING...' : 'DISCONNECTED'}
               </span>
             </div>
@@ -1313,7 +1301,12 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Real-Time Flow Analysis</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Data refreshed every {isLocalPollingActive && gatewayIp ? `${effectiveInterval}s (local)` : '31s (cloud)'} • Last update: {lastUpdated}</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Data refreshed every {isLocalPollingActive && gatewayIp ? `${effectiveInterval}s (local)` : '31s (cloud)'} • Last update: {lastUpdated ? formatTime(lastUpdated) : 'Never'}</p>
+                {!canControl && (
+                  <p style={{ fontSize: '0.78rem', color: '#fde68a', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '6px', padding: '6px 10px', marginTop: '6px', display: 'inline-block' }}>
+                    🔒 Monitor-only access — you can view status but not operate this device.
+                  </p>
+                )}
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>VALVE STATUS</span>
@@ -1626,7 +1619,7 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
                   borderBottom: '1px solid rgba(255,255,255,0.02)',
                   color: log.type === 'danger' ? '#ff8b8b' : log.type === 'warning' ? '#fde68a' : log.type === 'success' ? '#a7f3d0' : 'var(--text-secondary)'
                 }}>
-                  <span style={{ color: 'var(--text-muted)', marginRight: '6px', fontFamily: 'monospace' }}>[{log.time}]</span>
+                  <span style={{ color: 'var(--text-muted)', marginRight: '6px', fontFamily: 'monospace' }}>[{formatTime(log.ts)}]</span>
                   {log.message}
                 </div>
               ))}
@@ -1644,25 +1637,6 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
       >
         📊 View Usage Statistics
       </button>
-
-      {/* Simulator Modal */}
-      {showSimulatorModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(4,8,20,0.85)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-           <div className="glass-card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative', border: '1px solid rgba(0, 242, 254, 0.4)' }}>
-              <button onClick={() => setShowSimulatorModal(false)} className="btn-secondary" style={{ position: 'absolute', top: '20px', right: '20px', padding: '6px 10px', fontSize: '1rem', zIndex: 10 }}>✕</button>
-              
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '12px' }}>Mock Simulator Console</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>Test your flood alarm system immediately: Simulate high-rate leakages, pipe damage, or low batteries.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
-                <button onClick={() => fetch('http://localhost:3030/api/webhook/flood', { method: 'POST' }).catch(console.error)} className="btn-secondary" style={{ border: '1px solid rgba(239, 68, 68, 0.8)', background: 'rgba(239, 68, 68, 0.2)', color: '#fff' }}>🌊 Simulate Flood Sensor (Webhook)</button>
-                <button onClick={triggerMockBurst} className="btn-secondary" style={{ border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.05)', color: '#ff8b8b' }}>💥 Simulate 28 L/min Pipe Burst</button>
-                <button onClick={triggerMockLeak} className="btn-secondary" style={{ border: '1px solid rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.05)', color: '#fde68a' }}>⚠️ Simulate Weeping Pipe Leak</button>
-                <button onClick={triggerMockLowBattery} className="btn-secondary">🔋 Simulate Battery Drop (8%)</button>
-                <button onClick={clearAlarms} className="btn-primary" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', boxShadow: 'none' }}>✅ Clear All Alarm Simulations</button>
-              </div>
-           </div>
-        </div>
-      )}
 
       {/* Connection Failure banner */}
       {errorMsg && (
@@ -1720,7 +1694,7 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
               <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent-cyan)', marginBottom: '4px' }}>📊 Usage Statistics</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Water volume consumed ({volUnit}).</p>
               <div style={{ padding: '10px', background: 'rgba(255,200,0,0.1)', borderLeft: '3px solid #fde68a', borderRadius: '4px', fontSize: '0.75rem', color: '#fde68a' }}>
-                <strong>Note:</strong> This is only historical data recorded <em>while the app is open and connected</em>. It is stored locally on your device and not synced to the cloud.
+                <strong>Note:</strong> This is only historical data recorded <em>while the app is open and connected</em>. {storeHistoryCloud ? 'It is backed up to the cloud (last ~30 days) and restored on your other devices.' : 'It is stored locally on your device and not synced to the cloud.'} Times shown in {displayTz}.
               </div>
               
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
@@ -1751,18 +1725,18 @@ export default function LinkTapWidget({ device }: { device: DeviceConfig }) {
                     let key = '';
                     if (historyTab === 'hourly') {
                        if (now.getTime() - d.getTime() > 24 * 3600000) return;
-                       key = d.toLocaleTimeString([], {hour: '2-digit'});
+                       key = formatTime(d, {hour: '2-digit'});
                     } else if (historyTab === 'daily') {
                        if (now.getTime() - d.getTime() > 7 * 24 * 3600000) return;
-                       key = d.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'});
+                       key = formatDate(d, {weekday: 'short', month: 'short', day: 'numeric'});
                     } else if (historyTab === 'weekly') {
                        if (now.getTime() - d.getTime() > 30 * 24 * 3600000) return;
                        const diff = d.getDate() - d.getDay();
                        const weekStart = new Date(new Date(d).setDate(diff));
-                       key = 'Week of ' + weekStart.toLocaleDateString([], {month: 'short', day: 'numeric'});
+                       key = 'Week of ' + formatDate(weekStart, {month: 'short', day: 'numeric'});
                     } else {
                        if (now.getTime() - d.getTime() > 365 * 24 * 3600000) return;
-                       key = d.toLocaleDateString([], {month: 'short', year: 'numeric'});
+                       key = formatDate(d, {month: 'short', year: 'numeric'});
                     }
                     data[key] = (data[key] || 0) + vol;
                   });

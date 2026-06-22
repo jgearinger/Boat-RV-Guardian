@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, signInWithPopup, signInWithCredential } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { initializeFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC2h8iwGL05FJ6iP5_xCUON3oRm4hRGKos",
@@ -14,7 +14,10 @@ const firebaseConfig = {
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Force long-polling instead of gRPC streaming — gRPC/HTTP2 doesn't work in Tauri's WKWebView
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
 
 export {
   signInWithEmailAndPassword,

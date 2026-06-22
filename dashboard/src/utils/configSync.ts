@@ -1,5 +1,9 @@
 export const LOCAL_ONLY_KEYS = [
   'lt_sync_cloud',
+  'lt_unit',
+  'lt_tz',
+  'lt_is_cloud_polling',
+  'lt_is_local_polling',
   'lt_alert_offline',
   'lt_notif_enabled',
   'lt_alarm_sound',
@@ -24,8 +28,6 @@ export const VEHICLE_DEFAULT_CONFIG: Record<string, string> = {
   lt_store_history_cloud: 'false',
   lt_refresh: '5',
   lt_auto_guard: 'true',
-  lt_unit: 'imperial',
-  lt_tz: ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'),
   lt_nr_hrs: '0',
   lt_nr_mins: '0',
   lt_nr_daily: 'false',
@@ -52,10 +54,12 @@ export const VEHICLE_DEFAULT_CONFIG: Record<string, string> = {
   lt_batt_crit_v: '11.5',
   lt_batt_charge_v: '13.2',
   lt_batt_over_v: '15.5',
+  lt_shore_crit_low_v: '95',
+  lt_shore_low_v: '100',
+  lt_shore_high_v: '128',
+  lt_shore_crit_high_v: '135',
   lt_vessel_name: 'New Vessel',
-  lt_is_cloud_polling: 'false',
-  lt_is_local_polling: 'false',
-  lt_mock: 'true',
+  sh_local_password: '', // per-vehicle Shelly local device password (auto-generated on create)
   lt_devices: '[]'
 };
 
@@ -66,6 +70,21 @@ export function isLocalVehicleConfigDefault(): boolean {
     const val = localStorage.getItem(key);
     if (val !== null && val !== VEHICLE_DEFAULT_CONFIG[key]) {
       return false; // Found a non-default value
+    }
+  }
+  return true;
+}
+
+// Whether the current root profile is "untouched" — all defaults except the vessel name,
+// which is auto-populated on first run ("My First Vessel") and therefore not a signal of
+// real user data. Used on login to decide whether it's safe to silently adopt the cloud.
+const FRESHNESS_IGNORE_KEYS = ['lt_vessel_name'];
+export function isLocalProfileFresh(): boolean {
+  for (const key of VEHICLE_KEYS) {
+    if (FRESHNESS_IGNORE_KEYS.includes(key)) continue;
+    const val = localStorage.getItem(key);
+    if (val !== null && val !== VEHICLE_DEFAULT_CONFIG[key]) {
+      return false;
     }
   }
   return true;
@@ -82,9 +101,27 @@ export function getLocalVehicleConfig(): Record<string, any> {
 
 export function applyCloudVehicleConfig(config: Record<string, any>) {
   for (const key of VEHICLE_KEYS) {
-    if (config[key] !== undefined) {
-      localStorage.setItem(key, config[key] as string);
-    }
+    // Fall back to default for keys the cloud hasn't seen yet (new fields added after initial sync)
+    const val = config[key] !== undefined ? config[key] : VEHICLE_DEFAULT_CONFIG[key];
+    localStorage.setItem(key, val as string);
   }
+
+  // Keep the vehicles map in sync so Settings re-renders correctly after this fires settings_updated
+  try {
+    const activeId = localStorage.getItem('lt_active_vehicle_id');
+    if (activeId) {
+      const raw = localStorage.getItem('lt_vehicles');
+      const map = raw ? JSON.parse(raw) : {};
+      if (map[activeId]) {
+        const updatedConfig: Record<string, string> = {};
+        for (const key of VEHICLE_KEYS) {
+          updatedConfig[key] = localStorage.getItem(key) || VEHICLE_DEFAULT_CONFIG[key];
+        }
+        map[activeId].config = updatedConfig;
+        localStorage.setItem('lt_vehicles', JSON.stringify(map));
+      }
+    }
+  } catch (e) { /* non-fatal */ }
+
   window.dispatchEvent(new Event('settings_updated'));
 }

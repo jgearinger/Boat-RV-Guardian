@@ -2,13 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import { auth, signOut } from '../services/firebase';
 import Login from './Login';
 
-import { getActiveVehicleId, getVehiclesMap, switchVehicle, addNewVehicle, deleteVehicle, saveVehiclesMap, getDevices, type DeviceConfig } from '../utils/VehicleManager';
+import { getActiveVehicleId, getVehiclesMap, switchVehicle, addNewVehicle, deleteVehicle, getDevices, type DeviceConfig } from '../utils/VehicleManager';
+import { getLocalVehicleConfig } from '../utils/configSync';
+import { nativeFetch } from '../utils/nativeFetch';
 import { useCloudConfig } from '../hooks/useCloudConfig';
+import { usePendingInvites } from '../hooks/usePendingInvites';
+import {
+  ROLE_OPTIONS, ROLE_LABELS, getMyRole, getMembers, createInvite, acceptInvite, declineInvite,
+  cancelInvite, removeMember, leaveVehicle, listSentInvites,
+  type VehicleRole, type Invite, type Member,
+} from '../utils/sharing';
 import ProvisionShellyModal from '../components/ProvisionShellyModal';
 import ProvisionLinkTapModal from '../components/ProvisionLinkTapModal';
 
-const APP_VERSION = '1.0.27';
-const isNativeApp = !!(window as any).__TAURI_INTERNALS__;
+const APP_VERSION = '1.0.32';
 
 
 
@@ -43,26 +50,85 @@ export default function Settings({ user }: { user: any }) {
   const [isEditingName, setIsEditingName] = useState(false);
 
   // Cross-device sync
-  const { cloudVehicles } = useCloudConfig(null);
+  // Cloud-vehicle reconciliation lives in SyncModal (always mounted) so it works app-wide.
+  // Settings only needs the cloud write helpers; its vehiclesMap refreshes via settings_updated.
+  const { cloudVehicles, userConfig, updateVehicleConfig, updateUserConfig, deleteVehicleConfig } = useCloudConfig(null);
+  const [defaultVidSaving, setDefaultVidSaving] = useState(false);
+
+  // --- Friends / Sharing state ---
+  const pendingInvites = usePendingInvites();
+  const [shareVid, setShareVid] = useState('');
+  const [shareEmail, setShareEmail] = useState('');
+  const [shareRole, setShareRole] = useState<VehicleRole>('monitor');
+  const [shareMsg, setShareMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [lastInvite, setLastInvite] = useState<Invite | null>(null);
+  const [sentInvites, setSentInvites] = useState<Record<string, Invite[]>>({});
+  const [friendsBusy, setFriendsBusy] = useState(false);
+
+  // Vehicles I administer vs. ones shared with me (from the live cloud docs, which carry roles)
+  const adminVehicles = (cloudVehicles || []).filter(cv => getMyRole(cv) === 'admin');
+  const sharedWithMe = (cloudVehicles || []).filter(cv => { const r = getMyRole(cv); return r === 'control' || r === 'monitor'; });
+
+  // Default the share dropdown to the first admin vehicle once loaded
   useEffect(() => {
-    if (cloudVehicles.length > 0) {
-      let changed = false;
-      const map = getVehiclesMap();
-      for (const cv of cloudVehicles) {
-        if (!map[cv.id]) {
-          map[cv.id] = { id: cv.id, config: cv as Record<string, string> };
-          changed = true;
-        } else if (map[cv.id].config.lt_vessel_name !== cv.lt_vessel_name) {
-          map[cv.id].config.lt_vessel_name = cv.lt_vessel_name;
-          changed = true;
-        }
-      }
-      if (changed) {
-        saveVehiclesMap(map);
-        setVehiclesMap(map);
-      }
-    }
+    if (!shareVid && adminVehicles.length > 0) setShareVid(adminVehicles[0].id);
   }, [cloudVehicles]);
+
+  // Load outstanding sent invites for each vehicle I administer
+  const refreshSentInvites = async () => {
+    const map: Record<string, Invite[]> = {};
+    for (const cv of adminVehicles) {
+      try { map[cv.id] = (await listSentInvites(cv.id)).filter(i => i.status === 'pending'); } catch { /* ignore */ }
+    }
+    setSentInvites(map);
+  };
+  useEffect(() => {
+    if (activeTab === 'friends' && adminVehicles.length > 0) refreshSentInvites();
+  }, [activeTab, cloudVehicles.length]);
+
+  const handleCreateInvite = async () => {
+    setShareMsg(null);
+    setLastInvite(null);
+    if (!shareVid) { setShareMsg({ text: 'Select a vehicle to share', type: 'error' }); return; }
+    setFriendsBusy(true);
+    try {
+      const cv = adminVehicles.find(v => v.id === shareVid);
+      const name = cv?.lt_vessel_name || 'Vehicle';
+      const invite = await createInvite(shareVid, name, shareEmail, shareRole);
+      setLastInvite(invite);
+      setShareEmail('');
+      setShareMsg({ text: 'Invite created — share the message below with your friend.', type: 'success' });
+      refreshSentInvites();
+    } catch (e: any) {
+      setShareMsg({ text: e.message || 'Failed to create invite', type: 'error' });
+    } finally {
+      setFriendsBusy(false);
+    }
+  };
+
+  const handleAcceptInvite = async (invite: Invite) => {
+    setFriendsBusy(true);
+    try { await acceptInvite(invite); } catch (e: any) { setShareMsg({ text: e.message || 'Failed to accept', type: 'error' }); }
+    finally { setFriendsBusy(false); }
+  };
+  const handleDeclineInvite = async (invite: Invite) => {
+    setFriendsBusy(true);
+    try { await declineInvite(invite.id); } catch { /* ignore */ } finally { setFriendsBusy(false); }
+  };
+  const handleRemoveMember = async (vid: string, member: Member) => {
+    setFriendsBusy(true);
+    try { await removeMember(vid, member.uid); } catch (e: any) { setShareMsg({ text: e.message || 'Failed to remove', type: 'error' }); }
+    finally { setFriendsBusy(false); }
+  };
+  const handleCancelInvite = async (inviteId: string) => {
+    setFriendsBusy(true);
+    try { await cancelInvite(inviteId); refreshSentInvites(); } catch { /* ignore */ } finally { setFriendsBusy(false); }
+  };
+  const handleLeaveVehicle = async (vid: string) => {
+    setFriendsBusy(true);
+    try { await leaveVehicle(vid); } catch (e: any) { setShareMsg({ text: e.message || 'Failed to leave', type: 'error' }); }
+    finally { setFriendsBusy(false); }
+  };
 
   // Sync Toggles
   const [syncSettingsCloud, setSyncSettingsCloud] = useState(() => localStorage.getItem('lt_sync_cloud') !== 'false');
@@ -73,6 +139,8 @@ export default function Settings({ user }: { user: any }) {
   const volUnit = unitSystem === 'imperial' ? 'Gallons' : 'Liters';
   const [timeZone, setTimeZone] = useState(() => localStorage.getItem('lt_tz') || ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'));
   const [vesselNickname, setVesselNickname] = useState(() => localStorage.getItem('lt_vessel_name') || '');
+  const [shellyLocalPassword, setShellyLocalPassword] = useState(() => localStorage.getItem('sh_local_password') || '');
+  const [showShellyPw, setShowShellyPw] = useState(false);
   
   // Normal Run Profile Config
   const [normalRunHours, setNormalRunHours] = useState(() => Number(localStorage.getItem('lt_nr_hrs') || '0'));
@@ -82,7 +150,6 @@ export default function Settings({ user }: { user: any }) {
   const [autoRestartNormal, setAutoRestartNormal] = useState(() => localStorage.getItem('lt_nr_auto') === 'true');
 
   // Hardware Connections
-  const [mockMode, setMockMode] = useState(() => localStorage.getItem('lt_mock') === 'true');
   const [isCloudPollingActive, setIsCloudPollingActive] = useState(() => localStorage.getItem('lt_is_cloud_polling') === 'true');
   const [isLocalPollingActive, setIsLocalPollingActive] = useState(() => localStorage.getItem('lt_is_local_polling') === 'true');
   const [cloudUsername, setCloudUsername] = useState(() => localStorage.getItem('lt_cloud_user') || '');
@@ -98,6 +165,7 @@ export default function Settings({ user }: { user: any }) {
   const [cloudTaplinkers, setCloudTaplinkers] = useState<{id: string, name: string, gatewayId: string}[]>([]);
   const [isScanningGateway, setIsScanningGateway] = useState(false);
   const [scanMsg, setScanMsg] = useState<{text: string, type: 'success'|'error'} | null>(null);
+  const [scanResults, setScanResults] = useState<string[]>([]);
   // Manual-entry mode for each dropdown (falls back to text input)
   const [gatewayIdManual, setGatewayIdManual] = useState(false);
   const [device1Manual, setDevice1Manual] = useState(false);
@@ -128,6 +196,11 @@ export default function Settings({ user }: { user: any }) {
   const [battCritVoltage, setBattCritVoltage] = useState(() => Number(localStorage.getItem('lt_batt_crit_v') || '11.5'));
   const [battOverVoltage, setBattOverVoltage] = useState(() => Number(localStorage.getItem('lt_batt_over_v') || '15.5'));
   const [battChargeVoltage, setBattChargeVoltage] = useState(() => Number(localStorage.getItem('lt_batt_charge_v') || '13.2'));
+  // Shore Power Voltage Thresholds
+  const [shoreCritLowV, setShoreCritLowV] = useState(() => Number(localStorage.getItem('lt_shore_crit_low_v') || '95'));
+  const [shoreLowV, setShoreLowV] = useState(() => Number(localStorage.getItem('lt_shore_low_v') || '100'));
+  const [shoreHighV, setShoreHighV] = useState(() => Number(localStorage.getItem('lt_shore_high_v') || '128'));
+  const [shoreCritHighV, setShoreCritHighV] = useState(() => Number(localStorage.getItem('lt_shore_crit_high_v') || '135'));
 
   // Notifications & Alarms
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('lt_notif_enabled') !== 'false');
@@ -170,6 +243,7 @@ export default function Settings({ user }: { user: any }) {
       setStoreHistoryCloud(localStorage.getItem('lt_store_history_cloud') === 'true');
       setUnitSystem(localStorage.getItem('lt_unit') as 'metric' | 'imperial' || 'imperial');
       setTimeZone(localStorage.getItem('lt_tz') || ((Intl as any).supportedValuesOf ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'));
+      setShellyLocalPassword(localStorage.getItem('sh_local_password') || '');
       setVesselNickname(localStorage.getItem('lt_vessel_name') || '');
       setNormalRunHours(Number(localStorage.getItem('lt_nr_hrs') || '0'));
       setNormalRunMinutes(Number(localStorage.getItem('lt_nr_mins') || '0'));
@@ -177,7 +251,6 @@ export default function Settings({ user }: { user: any }) {
       setNormalRunVolume(Number(localStorage.getItem('lt_nr_vol') || '10'));
       setAutoRestartNormal(localStorage.getItem('lt_nr_auto') === 'true');
 
-      setMockMode(localStorage.getItem('lt_mock') === 'true');
       setIsCloudPollingActive(localStorage.getItem('lt_is_cloud_polling') === 'true');
       setIsLocalPollingActive(localStorage.getItem('lt_is_local_polling') === 'true');
       setCloudUsername(localStorage.getItem('lt_cloud_user') || '');
@@ -213,6 +286,10 @@ export default function Settings({ user }: { user: any }) {
       setBattCritVoltage(Number(localStorage.getItem('lt_batt_crit_v') || '11.5'));
       setBattOverVoltage(Number(localStorage.getItem('lt_batt_over_v') || '15.5'));
       setBattChargeVoltage(Number(localStorage.getItem('lt_batt_charge_v') || '13.2'));
+      setShoreCritLowV(Number(localStorage.getItem('lt_shore_crit_low_v') || '95'));
+      setShoreLowV(Number(localStorage.getItem('lt_shore_low_v') || '100'));
+      setShoreHighV(Number(localStorage.getItem('lt_shore_high_v') || '128'));
+      setShoreCritHighV(Number(localStorage.getItem('lt_shore_crit_high_v') || '135'));
 
       const currentVid = getActiveVehicleId();
       setActiveVid(currentVid);
@@ -241,6 +318,7 @@ export default function Settings({ user }: { user: any }) {
     localStorage.setItem('lt_sync_cloud', syncSettingsCloud.toString());
     localStorage.setItem('lt_store_history_cloud', storeHistoryCloud.toString());
     localStorage.setItem('lt_vessel_name', vesselNickname);
+    localStorage.setItem('sh_local_password', shellyLocalPassword);
     localStorage.setItem('lt_unit', unitSystem);
     localStorage.setItem('lt_tz', timeZone);
     localStorage.setItem('lt_nr_hrs', normalRunHours.toString());
@@ -249,7 +327,6 @@ export default function Settings({ user }: { user: any }) {
     localStorage.setItem('lt_nr_vol', normalRunVolume.toString());
     localStorage.setItem('lt_nr_auto', autoRestartNormal.toString());
 
-    localStorage.setItem('lt_mock', mockMode.toString());
     localStorage.setItem('lt_is_cloud_polling', isCloudPollingActive.toString());
     localStorage.setItem('lt_is_local_polling', isLocalPollingActive.toString());
     localStorage.setItem('lt_cloud_user', cloudUsername);
@@ -286,37 +363,36 @@ export default function Settings({ user }: { user: any }) {
     localStorage.setItem('lt_batt_crit_v', battCritVoltage.toString());
     localStorage.setItem('lt_batt_over_v', battOverVoltage.toString());
     localStorage.setItem('lt_batt_charge_v', battChargeVoltage.toString());
+    localStorage.setItem('lt_shore_crit_low_v', shoreCritLowV.toString());
+    localStorage.setItem('lt_shore_low_v', shoreLowV.toString());
+    localStorage.setItem('lt_shore_high_v', shoreHighV.toString());
+    localStorage.setItem('lt_shore_crit_high_v', shoreCritHighV.toString());
 
     syncDispatchRef.current = true;
     window.dispatchEvent(new Event('settings_updated'));
     syncDispatchRef.current = false;
   }, [
-    syncSettingsCloud, storeHistoryCloud, vesselNickname, unitSystem, timeZone,
+    syncSettingsCloud, storeHistoryCloud, vesselNickname, shellyLocalPassword, unitSystem, timeZone,
     normalRunHours, normalRunMinutes, normalRunDaily, normalRunVolume, autoRestartNormal,
-    mockMode, isCloudPollingActive, isLocalPollingActive, cloudUsername, cloudApiKey,
+    isCloudPollingActive, isLocalPollingActive, cloudUsername, cloudApiKey,
     gatewayIp, gatewayId, primaryDeviceId, secondaryDeviceId,
     shellyServer, shellyAuthKey, highPowerIds, lowPowerIds, floodSensorIds,
     notificationsEnabled, notifyAutoGuard, alertOffline,
     notifyLowBattery, notifyWatering, notifyFlood, notifyHouseBatt, notifyEngineBatt, notifyShorePower,
     alarmSound, alarmVolume, alarmRepeatInterval,
     maxFlowRate, maxDuration, autoGuardEnabled,
-    battLowVoltage, battCritVoltage, battOverVoltage, battChargeVoltage
+    battLowVoltage, battCritVoltage, battOverVoltage, battChargeVoltage,
+    shoreCritLowV, shoreLowV, shoreHighV, shoreCritHighV
   ]);
 
   const handleManualSync = async () => {
     setIsManualSyncing(true);
     setManualSyncMsg(null);
     try {
-      const { setDoc, doc } = await import('firebase/firestore');
-      const { db } = await import('../services/firebase');
-      const { getLocalVehicleConfig } = await import('../utils/configSync');
-      const { getActiveVehicleId } = await import('../utils/VehicleManager');
-      
-      const docRef = doc(db, 'vehicles', getActiveVehicleId());
+      const vid = getActiveVehicleId();
       const timeoutPromise = new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Sync timed out')), 8000));
-      
       await Promise.race([
-        setDoc(docRef, getLocalVehicleConfig(), { merge: true }),
+        updateVehicleConfig(vid, getLocalVehicleConfig()),
         timeoutPromise
       ]);
       setManualSyncMsg({ text: 'Settings successfully synced to cloud!', type: 'success' });
@@ -332,7 +408,7 @@ export default function Settings({ user }: { user: any }) {
     setIsDiscovering(true);
     setDiscoveryMsg(null);
     try {
-      const res = await fetch('https://www.link-tap.com/api/getAllDevices', {
+      const res = await nativeFetch('https://www.link-tap.com/api/getAllDevices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: cloudUsername, apiKey: cloudApiKey })
@@ -373,22 +449,22 @@ export default function Settings({ user }: { user: any }) {
   const handleScanGateway = async () => {
     setIsScanningGateway(true);
     setScanMsg(null);
-    const candidates = ['192.168.1.100', '192.168.0.100', '10.0.0.100', '10.0.1.100', '192.168.1.1', '192.168.0.1'];
-    for (const ip of candidates) {
-      try {
-        const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(`http://${ip}/api.shtml`, { signal: controller.signal });
-        clearTimeout(tid);
-        if (res.ok || res.status < 500) {
-          setGatewayIp(ip);
-          setScanMsg({ text: `Gateway found at ${ip}`, type: 'success' });
-          setIsScanningGateway(false);
-          return;
-        }
-      } catch { /* try next */ }
+    setScanResults([]);
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const found = await invoke<string[]>('discover_gateway');
+      if (found.length === 0) {
+        setScanMsg({ text: 'No LinkTap gateway found on your network. Enter IP manually.', type: 'error' });
+      } else if (found.length === 1) {
+        setGatewayIp(found[0]);
+        setScanMsg({ text: `Gateway found at ${found[0]}`, type: 'success' });
+      } else {
+        setScanResults(found);
+        setScanMsg({ text: `${found.length} gateways found — select one below.`, type: 'success' });
+      }
+    } catch (e: any) {
+      setScanMsg({ text: `Scan error: ${e?.message || e}`, type: 'error' });
     }
-    setScanMsg({ text: 'No gateway found on common addresses. Enter IP manually.', type: 'error' });
     setIsScanningGateway(false);
   };
 
@@ -434,8 +510,35 @@ export default function Settings({ user }: { user: any }) {
     setShowNewVehicleModal(false);
   };
 
+  // Device removal (with optional factory reset) — confirmed via dialog
+  const [deviceToRemove, setDeviceToRemove] = useState<DeviceConfig | null>(null);
+  const [factoryResetOnRemove, setFactoryResetOnRemove] = useState(false);
+  const [removingDevice, setRemovingDevice] = useState(false);
+
+  const confirmRemoveDevice = async () => {
+    const device = deviceToRemove;
+    if (!device) return;
+    setRemovingDevice(true);
+    try {
+      if (factoryResetOnRemove && device.type === 'shelly_sensor' && device.localIp) {
+        // Best-effort factory reset signal to the device on the local network.
+        try { await nativeFetch(`http://${device.localIp}/rpc/Shelly.FactoryReset`); } catch { /* unreachable / auth — proceed with removal anyway */ }
+      }
+      const m = await import('../utils/VehicleManager');
+      m.removeDevice(device.id);
+      setDevices(m.getDevices());
+      if (expandedDeviceId === device.id) setExpandedDeviceId(null);
+    } finally {
+      setRemovingDevice(false);
+      setDeviceToRemove(null);
+      setFactoryResetOnRemove(false);
+    }
+  };
+
   const handleDeleteVehicle = () => {
-    deleteVehicle(activeVid);
+    const idToDelete = activeVid;
+    deleteVehicle(idToDelete);                       // local removal + tombstone + switch to fallback
+    deleteVehicleConfig(idToDelete).catch(() => {}); // remove self from cloud allowedUsers
     setShowDeleteModal(false);
     setDeleteConfirmChecked(false);
   };
@@ -488,8 +591,7 @@ export default function Settings({ user }: { user: any }) {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
                   <label className="form-label">Vessel / Vehicle Nickname</label>
                   {isEditingName ? (
@@ -498,36 +600,68 @@ export default function Settings({ user }: { user: any }) {
                     <div className="form-input" style={{ opacity: 0.8, height: '42px', display: 'flex', alignItems: 'center' }}>{vesselNickname || 'Unnamed Vessel'}</div>
                   )}
                 </div>
-                <button 
-                  className={isEditingName ? "btn-primary" : "btn-secondary"} 
+                <button
+                  className={isEditingName ? "btn-primary" : "btn-secondary"}
                   onClick={() => setIsEditingName(!isEditingName)}
                   style={{ padding: '8px 16px', height: '42px' }}
                 >
                   {isEditingName ? 'Save' : 'Edit'}
                 </button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label className="form-label">Units</label>
-                  <select className="form-input" value={unitSystem} onChange={(e) => setUnitSystem(e.target.value as 'metric' | 'imperial')}>
-                    <option value="metric">Metric (Liters)</option>
-                    <option value="imperial">Imperial (Gallons)</option>
-                  </select>
+
+              <div>
+                <label className="form-label">Shelly Local Password</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input
+                      className="form-input"
+                      type={showShellyPw ? 'text' : 'password'}
+                      value={shellyLocalPassword}
+                      onChange={(e) => setShellyLocalPassword(e.target.value)}
+                      placeholder="Auto-generated per vehicle"
+                      style={{ paddingRight: '44px', width: '100%', fontFamily: 'monospace' }}
+                    />
+                    <button type="button" onClick={() => setShowShellyPw(s => !s)} aria-label={showShellyPw ? 'Hide' : 'Show'}
+                      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', padding: '4px' }}>
+                      {showShellyPw ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                  <button className="btn-secondary" style={{ padding: '8px 12px', height: '42px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                    onClick={async () => { const { generateShellyPassword } = await import('../utils/VehicleManager'); setShellyLocalPassword(generateShellyPassword()); }}>
+                    🎲 Regenerate
+                  </button>
                 </div>
-                <div>
-                  <label className="form-label">Time Zone</label>
-                  <select className="form-input" value={timeZone} onChange={(e) => setTimeZone(e.target.value)}>
-                    {(Intl as any).supportedValuesOf ? (Intl as any).supportedValuesOf('timeZone').map((tz: string) => (
-                      <option key={tz} value={tz}>{tz}</option>
-                    )) : <option value={timeZone}>{timeZone}</option>}
-                  </select>
-                </div>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+                  Set on your Shelly devices during setup and used for secure local access. Shared across this vehicle's devices.
+                </p>
               </div>
-            </div>
           </div>
 
-          {/* Notifications & Alarms */}
+          {/* Device Preferences — local to this device, not synced to cloud */}
           <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <h3 style={{ marginTop: 0, color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', margin: '0 0 4px 0' }}>Device Preferences</h3>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Saved on this device only — not synced to the cloud.</p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label className="form-label">Units</label>
+                <select className="form-input" value={unitSystem} onChange={(e) => setUnitSystem(e.target.value as 'metric' | 'imperial')}>
+                  <option value="metric">Metric (Liters)</option>
+                  <option value="imperial">Imperial (Gallons)</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Time Zone</label>
+                <select className="form-input" value={timeZone} onChange={(e) => setTimeZone(e.target.value)}>
+                  {(Intl as any).supportedValuesOf ? (Intl as any).supportedValuesOf('timeZone').map((tz: string) => (
+                    <option key={tz} value={tz}>{tz}</option>
+                  )) : <option value={timeZone}>{timeZone}</option>}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Notifications & Alarms</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -608,8 +742,8 @@ export default function Settings({ user }: { user: any }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Alarm Volume</span><span style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{Math.round(alarmVolume * 100)}%</span></div>
               <input type="range" min="0.1" max="1.0" step="0.1" className="form-input" style={{ padding: 0 }} value={alarmVolume} onChange={(e) => setAlarmVolume(Number(e.target.value))} />
             </div>
+            </div>
           </div>
-
 
         </>
       )}
@@ -671,6 +805,42 @@ export default function Settings({ user }: { user: any }) {
                 </div>
               </div>
 
+              {/* Default Vehicle on Login */}
+              {(() => {
+                const vehicles = Object.values(vehiclesMap);
+                if (vehicles.length === 0) return null;
+                // Auto-pick the first vehicle if the account has no preference set yet
+                const effectiveDefault = userConfig?.activeVehicleId || vehicles[0]?.id || '';
+                return (
+                  <div style={{ marginTop: '16px', display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="form-label" style={{ marginBottom: '4px' }}>Default Vehicle on Login</label>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
+                        Loaded automatically on a fresh install or new device.
+                      </p>
+                      <select
+                        className="form-input"
+                        value={effectiveDefault}
+                        onChange={async (e) => {
+                          setDefaultVidSaving(true);
+                          try { await updateUserConfig({ activeVehicleId: e.target.value }); }
+                          finally { setDefaultVidSaving(false); }
+                        }}
+                      >
+                        {vehicles.map(v => (
+                          <option key={v.id} value={v.id}>
+                            {v.config.lt_vessel_name || v.id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {defaultVidSaving && (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', paddingBottom: '10px', whiteSpace: 'nowrap' }}>Saving…</span>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Manual Sync Button */}
               <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <button 
@@ -678,7 +848,7 @@ export default function Settings({ user }: { user: any }) {
                   onClick={handleManualSync}
                   disabled={isManualSyncing}
                 >
-                  {isManualSyncing ? 'Syncing...' : 'Manual Sync Now'}
+                  {isManualSyncing ? 'Syncing...' : 'Force Cloud Sync'}
                 </button>
                 {manualSyncMsg && (
                   <div style={{ 
@@ -754,24 +924,16 @@ export default function Settings({ user }: { user: any }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span className={`status-dot ${connectionStatus === 'connected' ? 'online' : connectionStatus}`}></span>
                 <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
-                  {connectionStatus === 'mock' ? 'MOCK MODE' : 
-                    connectionStatus === 'connected' ? 
-                      (isCloudPollingActive && isLocalPollingActive ? 'CLOUD & LOCAL CONNECTED' : 
-                      isCloudPollingActive ? 'CLOUD ONLY CONNECTED' : 
-                      isLocalPollingActive ? 'LOCAL ONLY CONNECTED' : 'CONNECTED') : 
-                    connectionStatus === 'connecting' ? 'CONNECTING...' : ''}
+                  {connectionStatus === 'connected' ?
+                    (isCloudPollingActive && isLocalPollingActive ? 'CLOUD & LOCAL CONNECTED' :
+                    isCloudPollingActive ? 'CLOUD ONLY CONNECTED' :
+                    isLocalPollingActive ? 'LOCAL ONLY CONNECTED' : 'CONNECTED') :
+                   connectionStatus === 'connecting' ? 'CONNECTING...' : ''}
                 </span>
               </div>
             </div>
             
-            {mockMode && (
-              <div style={{ background: 'rgba(255, 204, 0, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255, 204, 0, 0.4)' }}>
-                <span style={{ fontSize: '0.85rem', color: '#ffcc00' }}>⚠️ <strong>Note:</strong> Network settings are disabled because the Mock Simulator is active. Scroll down and disable Mock Mode to connect to real hardware.</span>
-              </div>
-            )}
-            
-            {!mockMode && (
-              <>
+            <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-cyan)', margin: 0 }}>☁️ Cloud Controller</h4>
@@ -830,17 +992,27 @@ export default function Settings({ user }: { user: any }) {
                     <label className="form-label">Gateway IP</label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input type="text" className="form-input" value={gatewayIp}
-                        onChange={(e) => setGatewayIp(e.target.value)}
+                        onChange={(e) => { setGatewayIp(e.target.value); setScanResults([]); }}
                         placeholder="e.g. 192.168.1.100" style={{ flex: 1 }} />
                       <button className="btn-secondary" onClick={handleScanGateway} disabled={isScanningGateway}
                         style={{ padding: '8px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                        {isScanningGateway ? 'Scanning...' : '🔍 Scan for Gateway'}
+                        {isScanningGateway ? '⏳ Scanning subnet...' : '🔍 Scan for Gateway'}
                       </button>
                     </div>
                     {scanMsg && (
                       <div style={{ fontSize: '0.75rem', color: scanMsg.type === 'success' ? 'var(--accent-emerald)' : 'var(--accent-orange)', marginTop: '4px' }}>
                         {scanMsg.text}
                       </div>
+                    )}
+                    {scanResults.length > 1 && (
+                      <select className="form-input" style={{ marginTop: '8px' }}
+                        value={gatewayIp}
+                        onChange={(e) => { setGatewayIp(e.target.value); setScanResults([]); setScanMsg(null); }}>
+                        <option value="">— Select a gateway —</option>
+                        {scanResults.map(ip => (
+                          <option key={ip} value={ip}>{ip}</option>
+                        ))}
+                      </select>
                     )}
                   </div>
 
@@ -873,9 +1045,14 @@ export default function Settings({ user }: { user: any }) {
                   </div>
 
                   {/* Device IDs */}
+                  {primaryDeviceId && secondaryDeviceId && primaryDeviceId === secondaryDeviceId && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--accent-orange)', background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '8px', padding: '8px 12px' }}>
+                      ⚠️ Device ID 1 and Device ID 2 are the same — each field must reference a different TapLinker.
+                    </div>
+                  )}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
-                      <label className="form-label">TapLinker Device 1</label>
+                      <label className="form-label">TapLinker Device ID 1</label>
                       {cloudTaplinkers.length > 0 && !device1Manual ? (
                         <select className="form-input" value={primaryDeviceId}
                           onChange={(e) => {
@@ -883,7 +1060,7 @@ export default function Settings({ user }: { user: any }) {
                             else setPrimaryDeviceId(e.target.value);
                           }}>
                           <option value="">— Select a Device —</option>
-                          {cloudTaplinkers.map(tap => (
+                          {cloudTaplinkers.filter(tap => tap.id !== secondaryDeviceId).map(tap => (
                             <option key={tap.id} value={tap.id}>{tap.name !== tap.id ? `${tap.name} (${tap.id})` : tap.id}</option>
                           ))}
                           <option value="__manual__">✏️ Enter manually...</option>
@@ -901,7 +1078,7 @@ export default function Settings({ user }: { user: any }) {
                       )}
                     </div>
                     <div>
-                      <label className="form-label">TapLinker Device 2</label>
+                      <label className="form-label">TapLinker Device ID 2</label>
                       {cloudTaplinkers.length > 0 && !device2Manual ? (
                         <select className="form-input" value={secondaryDeviceId}
                           onChange={(e) => {
@@ -909,7 +1086,7 @@ export default function Settings({ user }: { user: any }) {
                             else setSecondaryDeviceId(e.target.value);
                           }}>
                           <option value="">— Select a Device (optional) —</option>
-                          {cloudTaplinkers.map(tap => (
+                          {cloudTaplinkers.filter(tap => tap.id !== primaryDeviceId).map(tap => (
                             <option key={tap.id} value={tap.id}>{tap.name !== tap.id ? `${tap.name} (${tap.id})` : tap.id}</option>
                           ))}
                           <option value="__manual__">✏️ Enter manually...</option>
@@ -929,14 +1106,6 @@ export default function Settings({ user }: { user: any }) {
                   </div>
                 </div>
               </>
-            )}
-
-            {!isNativeApp && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: mockMode ? 1 : 0.6, marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-                <label className="form-label" style={{ margin: 0 }}>Simulate Locally (Mock Mode)</label>
-                <input type="checkbox" checked={mockMode} onChange={(e) => setMockMode(e.target.checked)} style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--accent-cyan)' }} />
-              </div>
-            )}
           </div>
           )}
 
@@ -979,12 +1148,7 @@ export default function Settings({ user }: { user: any }) {
                           >⚙️</button>
                           <button
                             className="btn-secondary"
-                            onClick={async () => {
-                              const m = await import('../utils/VehicleManager');
-                              m.removeDevice(device.id);
-                              setDevices(m.getDevices());
-                              if (expandedDeviceId === device.id) setExpandedDeviceId(null);
-                            }}
+                            onClick={() => { setDeviceToRemove(device); setFactoryResetOnRemove(false); }}
                             style={{ padding: '6px 10px', fontSize: '0.75rem', borderColor: '#ef4444', color: '#ef4444' }}
                           >Remove</button>
                         </div>
@@ -1164,8 +1328,54 @@ export default function Settings({ user }: { user: any }) {
 
             {/* Shore Power */}
             <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <h3 style={{ marginTop: 0, color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', margin: 0 }}>Shore Power</h3>
-              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>No advanced settings currently available.</p>
+              <h3 style={{ marginTop: 0, color: '#fff', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', margin: 0 }}>⚡ Shore Power</h3>
+              <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.85rem' }}>Alert thresholds applied to shore power / AC inlet sensors.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label className="form-label">Critical Low</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type="number" min="0" max="120" step="1" className="form-input"
+                      value={shoreCritLowV}
+                      onChange={(e) => setShoreCritLowV(Number(e.target.value))}
+                      style={{ paddingRight: '32px' }} />
+                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>V</span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>Triggers critical alarm</div>
+                </div>
+                <div>
+                  <label className="form-label">Low Voltage</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type="number" min="0" max="120" step="1" className="form-input"
+                      value={shoreLowV}
+                      onChange={(e) => setShoreLowV(Number(e.target.value))}
+                      style={{ paddingRight: '32px' }} />
+                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>V</span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>Triggers low-voltage warning</div>
+                </div>
+                <div>
+                  <label className="form-label">High Voltage</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type="number" min="110" max="160" step="1" className="form-input"
+                      value={shoreHighV}
+                      onChange={(e) => setShoreHighV(Number(e.target.value))}
+                      style={{ paddingRight: '32px' }} />
+                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>V</span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>Triggers high-voltage warning</div>
+                </div>
+                <div>
+                  <label className="form-label">Critical High</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type="number" min="110" max="160" step="1" className="form-input"
+                      value={shoreCritHighV}
+                      onChange={(e) => setShoreCritHighV(Number(e.target.value))}
+                      style={{ paddingRight: '32px' }} />
+                    <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>V</span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>Triggers critical alarm</div>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -1174,16 +1384,147 @@ export default function Settings({ user }: { user: any }) {
       )}
 
       {activeTab === 'friends' && (
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', padding: '40px 20px', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '8px' }}>👥</div>
-          <h3 style={{ margin: 0, color: 'var(--accent-cyan)' }}>Friends & Family Access</h3>
-          <p style={{ color: 'var(--text-secondary)', maxWidth: '400px' }}>
-            We're building a feature to let you securely share access to your Boat & RV Guardian with trusted friends or family members without giving away your password.
-          </p>
-          <div style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.05)', borderRadius: '20px', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '12px' }}>
-            Coming Soon
+        !user ? (
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', padding: '40px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem' }}>👥</div>
+            <h3 style={{ margin: 0, color: 'var(--accent-cyan)' }}>Friends & Family Access</h3>
+            <p style={{ color: 'var(--text-secondary)', maxWidth: '400px' }}>Sign in to share vehicle access with trusted friends or family.</p>
+            {!showLogin ? (
+              <button className="btn-primary" onClick={() => setShowLogin(true)}>Log into Boat-RV-Guardian.com</button>
+            ) : (
+              <div style={{ marginTop: '12px', width: '100%', background: 'rgba(0,0,0,0.2)', padding: '15px', borderRadius: '12px' }}>
+                <Login />
+                <button className="btn-secondary" onClick={() => setShowLogin(false)} style={{ fontSize: '0.85rem', marginTop: '10px' }}>Cancel</button>
+              </div>
+            )}
           </div>
+        ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {shareMsg && (
+            <div style={{ fontSize: '0.85rem', padding: '10px', borderRadius: '8px',
+              color: shareMsg.type === 'success' ? '#10b981' : '#ef4444',
+              background: shareMsg.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }}>
+              {shareMsg.text}
+            </div>
+          )}
+
+          {/* Pending invitations addressed to me */}
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h3 style={{ margin: 0, color: 'var(--accent-cyan)' }}>Pending Invitations</h3>
+            {pendingInvites.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>No pending invitations. When someone shares a vehicle with you, it appears here to accept.</p>
+            ) : pendingInvites.map(inv => (
+              <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.85rem' }}>
+                  <strong>{inv.vehicleName}</strong> — {ROLE_LABELS[inv.role]}
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>from {inv.invitedByEmail}</div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn-primary" disabled={friendsBusy} onClick={() => handleAcceptInvite(inv)} style={{ padding: '6px 12px', fontSize: '0.8rem' }}>Accept</button>
+                  <button className="btn-secondary" disabled={friendsBusy} onClick={() => handleDeclineInvite(inv)} style={{ padding: '6px 12px', fontSize: '0.8rem' }}>Decline</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Share a vehicle */}
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <h3 style={{ margin: 0, color: 'var(--accent-cyan)' }}>Share a Vehicle</h3>
+            {adminVehicles.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>You need to be an admin of a vehicle to share it. Create or sync a vehicle first.</p>
+            ) : (
+              <>
+                <div>
+                  <label className="form-label">Vehicle</label>
+                  <select className="form-input" value={shareVid} onChange={e => setShareVid(e.target.value)}>
+                    {adminVehicles.map(cv => <option key={cv.id} value={cv.id}>{cv.lt_vessel_name || cv.id}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Friend's Email</label>
+                  <input className="form-input" type="email" value={shareEmail} onChange={e => setShareEmail(e.target.value)} placeholder="friend@example.com" />
+                </div>
+                <div>
+                  <label className="form-label">Privilege Level</label>
+                  <select className="form-input" value={shareRole} onChange={e => setShareRole(e.target.value as VehicleRole)}>
+                    {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '6px 0 0 0' }}>
+                    {ROLE_OPTIONS.find(r => r.value === shareRole)?.desc}
+                  </p>
+                </div>
+                <button className="btn-primary" disabled={friendsBusy || !shareEmail} onClick={handleCreateInvite}>
+                  {friendsBusy ? 'Working…' : 'Create Invite'}
+                </button>
+
+                {lastInvite && (
+                  <div style={{ background: 'rgba(0,242,254,0.06)', border: '1px solid rgba(0,242,254,0.3)', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      Send this to <strong>{lastInvite.inviteeEmail}</strong> (no email is sent automatically):
+                    </div>
+                    {(() => {
+                      const msg = `You've been invited to "${lastInvite.vehicleName}" on Boat & RV Guardian as "${ROLE_LABELS[lastInvite.role]}". To accept: 1) Install Boat & RV Guardian, 2) Sign in with ${lastInvite.inviteeEmail}, 3) open Settings → Friends and accept the pending invitation.`;
+                      return (
+                        <>
+                          <textarea readOnly value={msg} rows={4} className="form-input" style={{ fontSize: '0.8rem', resize: 'vertical' }} />
+                          <button className="btn-secondary" style={{ fontSize: '0.8rem' }}
+                            onClick={() => { try { navigator.clipboard?.writeText(msg); setShareMsg({ text: 'Invitation message copied to clipboard.', type: 'success' }); } catch { /* ignore */ } }}>
+                            📋 Copy invitation message
+                          </button>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* People with access to my vehicles */}
+          {adminVehicles.length > 0 && (
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h3 style={{ margin: 0, color: 'var(--accent-cyan)' }}>People With Access</h3>
+              {adminVehicles.map(cv => {
+                const members: Member[] = getMembers(cv);
+                const pend = sentInvites[cv.id] || [];
+                return (
+                  <div key={cv.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px' }}>
+                    <div style={{ fontWeight: 700 }}>{cv.lt_vessel_name || cv.id}</div>
+                    {members.map(m => (
+                      <div key={m.uid} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
+                        <span>{m.email} {m.uid === user.uid && <em style={{ color: 'var(--text-muted)' }}>(you)</em>} — {ROLE_LABELS[m.role]}</span>
+                        {m.uid !== user.uid && (
+                          <button className="btn-secondary" disabled={friendsBusy} onClick={() => handleRemoveMember(cv.id, m)} style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444', borderColor: 'rgba(239,68,68,0.4)' }}>Remove</button>
+                        )}
+                      </div>
+                    ))}
+                    {pend.map(inv => (
+                      <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        <span>{inv.inviteeEmail} — {ROLE_LABELS[inv.role]} <em>(pending)</em></span>
+                        <button className="btn-secondary" disabled={friendsBusy} onClick={() => handleCancelInvite(inv.id)} style={{ padding: '4px 10px', fontSize: '0.75rem' }}>Cancel</button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Vehicles shared with me — leave/remove connection */}
+          {sharedWithMe.length > 0 && (
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <h3 style={{ margin: 0, color: 'var(--accent-cyan)' }}>Shared With Me</h3>
+              {sharedWithMe.map(cv => (
+                <div key={cv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
+                  <span><strong>{cv.lt_vessel_name || cv.id}</strong> — {ROLE_LABELS[getMyRole(cv) as VehicleRole]}</span>
+                  <button className="btn-secondary" disabled={friendsBusy} onClick={() => handleLeaveVehicle(cv.id)} style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444', borderColor: 'rgba(239,68,68,0.4)' }}>Leave</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+        )
       )}
 
       {activeTab === 'updates' && (
@@ -1211,6 +1552,36 @@ export default function Settings({ user }: { user: any }) {
         </div>
       )}
       
+      {/* Remove Device confirmation */}
+      {deviceToRemove && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>
+          <div className="glass-card" style={{ maxWidth: '420px', width: '90%' }}>
+            <h3 style={{ marginTop: 0, color: '#ef4444' }}>Remove Device</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              Remove <strong>{deviceToRemove.name || deviceToRemove.role}</strong> from this vehicle? It will no longer be monitored in the app.
+            </p>
+
+            {deviceToRemove.type === 'shelly_sensor' && (
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', padding: '12px', marginTop: '8px' }}>
+                <input type="checkbox" checked={factoryResetOnRemove} onChange={(e) => setFactoryResetOnRemove(e.target.checked)} style={{ marginTop: '2px', accentColor: 'var(--accent-cyan)' }} />
+                <span style={{ fontSize: '0.82rem' }}>
+                  <strong>Also factory reset the device</strong> — erases its Wi-Fi credentials and settings so it can be set up fresh.
+                  {!deviceToRemove.localIp && <span style={{ display: 'block', color: '#fde68a', marginTop: '4px' }}>⚠️ This device's local IP isn't known, so the reset signal can't be sent. It will only be removed from the app.</span>}
+                  {deviceToRemove.localIp && <span style={{ display: 'block', color: 'var(--text-muted)', marginTop: '4px' }}>Requires being on the same Wi-Fi network as the device.</span>}
+                </span>
+              </label>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button className="btn-secondary" onClick={() => { setDeviceToRemove(null); setFactoryResetOnRemove(false); }} style={{ flex: 1 }} disabled={removingDevice}>Cancel</button>
+              <button className="btn-primary" onClick={confirmRemoveDevice} style={{ flex: 1, background: '#ef4444', borderColor: '#ef4444' }} disabled={removingDevice}>
+                {removingDevice ? 'Removing…' : (factoryResetOnRemove && deviceToRemove.localIp ? 'Reset & Remove' : 'Remove')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* New Vehicle Modal */}
       {showNewVehicleModal && (
         <div style={{

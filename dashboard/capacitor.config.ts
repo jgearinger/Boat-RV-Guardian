@@ -11,8 +11,11 @@ const config: CapacitorConfig = {
     cleartext: true
   },
   plugins: {
+    // Global fetch/XHR patching is OFF on purpose: it breaks Firestore's long-polling
+    // connection on Android (cloud sync returns nothing). Cross-origin device/cloud calls
+    // use the CapacitorHttp plugin method explicitly via utils/nativeFetch instead.
     CapacitorHttp: {
-      enabled: true
+      enabled: false
     },
     FirebaseAuthentication: {
       skipNativeAuth: false,

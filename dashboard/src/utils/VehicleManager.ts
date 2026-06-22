@@ -12,7 +12,8 @@ export interface DeviceConfig {
   
   // Shelly mapping
   shellyDeviceId?: string;
-  
+  localIp?: string; // Shelly local IP (for local RPC polling / factory reset)
+
   // Device-specific settings
   maxFlowRate?: number;
   maxDuration?: number;
@@ -26,6 +27,49 @@ export interface Vehicle {
 
 export function generateVehicleId() {
   return 'v_' + Math.random().toString(36).substr(2, 9);
+}
+
+// 8-char password with upper, lower, and digits — used as each vehicle's Shelly local password.
+export function generateShellyPassword(): string {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const all = upper + lower + digits;
+  const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
+  // Guarantee at least one of each class, then fill the rest.
+  let chars = [pick(upper), pick(upper), pick(lower), pick(lower), pick(lower), pick(digits), pick(digits), pick(all)];
+  // Shuffle so the guaranteed positions aren't predictable.
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}
+
+// Dispatch settings_updated with the cloud-sync guard raised so SyncModal's auto-save does
+// NOT treat a vehicle change as an edit and write the freshly-loaded config to the wrong record.
+function dispatchSettingsUpdatedGuarded() {
+  (window as any).__is_syncing_cloud = true;
+  window.dispatchEvent(new Event('settings_updated'));
+  (window as any).__is_syncing_cloud = false;
+}
+
+// Tombstones: ids deleted locally. Filtered out of cloud re-hydration so a deleted vehicle
+// cannot reappear in the window before the cloud allowedUsers removal propagates.
+export function getDeletedVehicleIds(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem('lt_deleted_vehicles') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function addDeletedVehicleId(id: string) {
+  const ids = getDeletedVehicleIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    localStorage.setItem('lt_deleted_vehicles', JSON.stringify(ids));
+  }
 }
 
 export function getVehiclesMap(): Record<string, Vehicle> {
@@ -55,6 +99,11 @@ export function getActiveVehicleId(): string {
     if (!currentConfig.lt_vessel_name) {
       currentConfig.lt_vessel_name = 'My First Vessel';
       localStorage.setItem('lt_vessel_name', 'My First Vessel');
+    }
+    // Generate a Shelly local password for this vehicle if one isn't set
+    if (!currentConfig.sh_local_password) {
+      currentConfig.sh_local_password = generateShellyPassword();
+      localStorage.setItem('sh_local_password', currentConfig.sh_local_password);
     }
     map[id] = { id, config: currentConfig };
     saveVehiclesMap(map);
@@ -101,13 +150,13 @@ export function switchVehicle(newId: string) {
   }
 
   localStorage.setItem('lt_active_vehicle_id', newId);
-  window.dispatchEvent(new Event('settings_updated'));
+  dispatchSettingsUpdatedGuarded();
 }
 
 export function addNewVehicle(name: string = 'New Vessel') {
   const map = getVehiclesMap();
   const id = generateVehicleId();
-  const newConfig = { ...VEHICLE_DEFAULT_CONFIG, lt_vessel_name: name };
+  const newConfig = { ...VEHICLE_DEFAULT_CONFIG, lt_vessel_name: name, sh_local_password: generateShellyPassword() };
   map[id] = { id, config: newConfig };
   saveVehiclesMap(map);
   return id;
@@ -121,6 +170,7 @@ export function deleteVehicle(id: string) {
 
   delete map[id];
   saveVehiclesMap(map);
+  addDeletedVehicleId(id); // tombstone so the cloud listener can't re-add it
 
   const activeId = localStorage.getItem('lt_active_vehicle_id');
   if (activeId === id) {
@@ -131,8 +181,7 @@ export function deleteVehicle(id: string) {
       localStorage.setItem(key, newConfig[key] || VEHICLE_DEFAULT_CONFIG[key]);
     }
     localStorage.setItem('lt_active_vehicle_id', newActiveId);
-    localStorage.setItem('lt_active_vehicle_id', newActiveId);
-    window.dispatchEvent(new Event('settings_updated'));
+    dispatchSettingsUpdatedGuarded();
   }
 }
 

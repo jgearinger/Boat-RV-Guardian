@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, auth, doc, onSnapshot, setDoc } from '../services/firebase';
-import { collection, query, where, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export interface UserConfig {
@@ -11,6 +11,10 @@ export interface UserConfig {
 export function useCloudConfig(activeVid: string | null) {
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
   const [activeVehicleConfig, setActiveVehicleConfig] = useState<Record<string, any> | null>(null);
+  // The vehicle id that activeVehicleConfig currently corresponds to. Null until the
+  // snapshot for the current activeVid has arrived. SyncModal uses this to guarantee it
+  // never compares one vehicle's cloud data against another vehicle's local config.
+  const [configVid, setConfigVid] = useState<string | null>(null);
   const [cloudVehicles, setCloudVehicles] = useState<Record<string, any>[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,16 +72,22 @@ export function useCloudConfig(activeVid: string | null) {
   useEffect(() => {
     if (!activeVid) {
       setActiveVehicleConfig(null);
+      setConfigVid(null);
       return;
     }
-    
+
+    // Clear stale data immediately so SyncModal doesn't compare against the wrong vehicle.
+    // configVid stays out of sync with activeVid until the snapshot below arrives, which is
+    // exactly the signal SyncModal needs to wait for.
+    setActiveVehicleConfig(null);
+    setConfigVid(null);
+    setLoading(true);
+
     const vehicleRef = doc(db, 'vehicles', activeVid);
     const unsubscribeVehicle = onSnapshot(vehicleRef, (snap) => {
-      if (snap.exists()) {
-        setActiveVehicleConfig(snap.data());
-      } else {
-        setActiveVehicleConfig({});
-      }
+      setActiveVehicleConfig(snap.exists() ? snap.data() : {});
+      setConfigVid(activeVid);
+      setLoading(false);
     });
 
     return () => unsubscribeVehicle();
@@ -98,5 +108,15 @@ export function useCloudConfig(activeVid: string | null) {
     }, { merge: true });
   };
 
-  return { userConfig, activeVehicleConfig, cloudVehicles, updateUserConfig, updateVehicleConfig, loading };
+  // Remove the current user from a vehicle's allowedUsers so it stops matching the
+  // array-contains query (and therefore stops being re-hydrated into the local map).
+  const deleteVehicleConfig = async (vid: string) => {
+    if (!auth.currentUser) return;
+    const docRef = doc(db, 'vehicles', vid);
+    await setDoc(docRef, {
+      allowedUsers: arrayRemove(auth.currentUser.uid)
+    }, { merge: true });
+  };
+
+  return { userConfig, activeVehicleConfig, configVid, cloudVehicles, updateUserConfig, updateVehicleConfig, deleteVehicleConfig, loading };
 }

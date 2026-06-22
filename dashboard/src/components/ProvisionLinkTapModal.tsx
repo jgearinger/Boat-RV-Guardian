@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { addDevice } from '../utils/VehicleManager';
+import { nativeFetch } from '../utils/nativeFetch';
 
 // Helper to use Tauri's fetch if available, otherwise browser fetch
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
@@ -13,7 +14,7 @@ const unifiedFetch = async (url: string, options?: any) => {
       body: options?.body
     });
   }
-  return fetch(url, options);
+  return nativeFetch(url, options) as any;
 };
 
 export default function ProvisionLinkTapModal({ onClose }: { onClose: () => void }) {

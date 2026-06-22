@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { nativeFetch } from '../utils/nativeFetch';
+import { auth } from '../services/firebase';
 
 // Helper to use Tauri's fetch if available, otherwise browser fetch
 const isTauriEnv = () => typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).isTauri);
@@ -13,18 +15,34 @@ const unifiedFetch = async (url: string, options?: any) => {
       body: options?.body
     });
   }
-  return fetch(url, options);
+  return nativeFetch(url, options) as any;
+};
+
+// Map a Shelly device's reported identity to one of our sensor roles. Returns null when we
+// can't confidently tell (the user then keeps whatever they picked).
+const detectRole = (info: any): string | null => {
+  const hay = `${info?.app || ''} ${info?.model || ''} ${info?.id || ''}`.toLowerCase();
+  if (hay.includes('flood')) return 'Flood Sensor';
+  if (hay.includes('uni')) return 'Low Power Sensor';                 // Plus Uni → DC 12-24V monitoring
+  if (hay.includes('em') || hay.includes('pm')) return 'High Power Sensor'; // mains energy/power meter
+  return null;
 };
 
 export default function ProvisionShellyModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<'selection' | 'ble_scanning' | 'credentials' | 'ip_entry' | 'provisioning' | 'completion'>('selection');
+  const [step, setStep] = useState<'selection' | 'ble_scanning' | 'credentials' | 'ip_entry' | 'provisioning' | 'confirm_type' | 'completion'>('selection');
   const [method, setMethod] = useState<'wifi' | 'manual_ip' | 'bluetooth' | null>(null);
-  
+
   const [ssid, setSsid] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [localIp, setLocalIp] = useState('');
   const [shellyPassword, setShellyPassword] = useState('');
+  const [showShellyPassword, setShowShellyPassword] = useState(false);
   const [deviceRole, setDeviceRole] = useState('High Power Sensor');
+  // Carried from provisioning into the confirm step
+  const [shellyId, setShellyId] = useState('UNKNOWN_SHELLY');
+  const [detectedModel, setDetectedModel] = useState('');
+  const [roleAutoDetected, setRoleAutoDetected] = useState(false);
   
   // Bluetooth specific state
   const [bleDevices, setBleDevices] = useState<{id: string, name: string}[]>([]);
@@ -32,6 +50,11 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
   
   const [statusMessage, setStatusMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Wi-Fi scan (asks the Shelly to list networks it can see, via its Gen2 Wifi.Scan RPC)
+  const [isScanningWifi, setIsScanningWifi] = useState(false);
+  const [wifiScanResults, setWifiScanResults] = useState<{ ssid: string; rssi: number }[]>([]);
+  const [wifiScanMsg, setWifiScanMsg] = useState('');
 
   // Dynamic ordering: Bluetooth first on mobile, Wi-Fi first on desktop
   const isMobile = Capacitor.isNativePlatform() || (typeof window !== 'undefined' && window.innerWidth <= 768);
@@ -63,6 +86,36 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
     }, 2500);
   };
 
+  const handleScanWifi = async () => {
+    setIsScanningWifi(true);
+    setWifiScanMsg('');
+    try {
+      // The Shelly's AP is at 192.168.33.1; Wifi.Scan returns the networks it can see nearby.
+      const res = await unifiedFetch('http://192.168.33.1/rpc/Wifi.Scan');
+      const data = await res.json();
+      const raw: any[] = data?.results || data?.result?.results || [];
+      // Dedupe by SSID (keep strongest signal), drop hidden/empty, sort by RSSI desc.
+      const best = new Map<string, number>();
+      for (const ap of raw) {
+        const s = (ap?.ssid || '').trim();
+        if (!s) continue;
+        const rssi = typeof ap?.rssi === 'number' ? ap.rssi : -100;
+        if (!best.has(s) || rssi > (best.get(s) as number)) best.set(s, rssi);
+      }
+      const list = [...best.entries()].map(([ssid, rssi]) => ({ ssid, rssi })).sort((a, b) => b.rssi - a.rssi);
+      if (list.length === 0) {
+        setWifiScanMsg('No networks found. Enter the SSID manually below.');
+      } else {
+        setWifiScanResults(list);
+        if (!ssid) setSsid(list[0].ssid);
+      }
+    } catch (e: any) {
+      setWifiScanMsg("Couldn't scan — make sure you're connected to the Shelly's Wi-Fi AP, then retry. You can also type the SSID manually.");
+    } finally {
+      setIsScanningWifi(false);
+    }
+  };
+
   const executeWifiProvisioning = async () => {
     setIsProcessing(true);
     try {
@@ -72,24 +125,26 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
         const infoRes = await unifiedFetch(`http://192.168.33.1/rpc/Shelly.GetDeviceInfo`);
         const info = await infoRes.json();
         shellyDeviceId = info.id || info.mac;
+        // Auto-identify the sensor type from the device's reported model/app
+        const detected = detectRole(info);
+        setDetectedModel(info.model || info.app || info.id || '');
+        if (detected) { setDeviceRole(detected); setRoleAutoDetected(true); }
+        else { setRoleAutoDetected(false); }
       } catch (e) {
         console.warn('Could not fetch device info', e);
       }
+      setShellyId(shellyDeviceId);
 
-      setStatusMessage('Configuring Device (2/3)...');
-      // 1. Configure Webhook
-      const cloudflareUrl = 'https://boat-rv-guardian-worker.yourdomain.workers.dev/api/shelly'; // Replace with actual worker URL later
-      // Shelly Gen 2/3 Webhook.Create format
-      await unifiedFetch(`http://192.168.33.1/rpc/Webhook.Create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cid: 0,
-          enable: true,
-          event: "sys.online", // or other events depending on sensor type
-          urls: [cloudflareUrl]
-        })
-      });
+      // Cloud webhook only makes sense when signed in (it routes alerts through the cloud worker).
+      if (auth.currentUser) {
+        setStatusMessage('Configuring Cloud Alerts (2/3)...');
+        const cloudflareUrl = 'https://boat-rv-guardian-worker.yourdomain.workers.dev/api/shelly'; // Replace with actual worker URL later
+        await unifiedFetch(`http://192.168.33.1/rpc/Webhook.Create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cid: 0, enable: true, event: 'sys.online', urls: [cloudflareUrl] })
+        });
+      }
 
       setStatusMessage('Sending Wi-Fi Credentials (3/3)...');
       // 2. Setup Wi-Fi and reboot
@@ -103,21 +158,28 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
         })
       });
       
-      const { addDevice } = await import('../utils/VehicleManager');
-      addDevice({
-        id: 'brv_sh_' + Math.random().toString(36).substr(2, 9),
-        type: 'shelly_sensor',
-        role: deviceRole,
-        name: deviceRole,
-        shellyDeviceId: shellyDeviceId
-      });
-
-      setStep('completion');
+      // Confirm/override the (auto-detected) device type before adding it
+      setStep('confirm_type');
     } catch (e: any) {
       setStatusMessage(`Error: ${e.message}. Are you connected to the Shelly AP?`);
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Finalize: persist the device locally using the confirmed role + detected id
+  const finalizeAddDevice = async () => {
+    const { addDevice } = await import('../utils/VehicleManager');
+    addDevice({
+      id: 'brv_sh_' + Math.random().toString(36).substr(2, 9),
+      type: 'shelly_sensor',
+      role: deviceRole,
+      name: deviceRole,
+      shellyDeviceId: shellyId,
+      // Manual-IP setup knows the device's address; AP/BLE setup learns it later via discovery.
+      ...(method === 'manual_ip' && localIp ? { localIp } : {}),
+    });
+    setStep('completion');
   };
 
   const executeManualIpProvisioning = async () => {
@@ -132,34 +194,29 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
     setStatusMessage('Getting Device ID (1/2)...');
     let shellyDeviceId = 'UNKNOWN_SHELLY';
     try {
-      const cloudflareUrl = 'https://boat-rv-guardian-worker.yourdomain.workers.dev/api/shelly';
-      
       const infoRes = await unifiedFetch(`http://${localIp}/rpc/Shelly.GetDeviceInfo`, { headers });
       const info = await infoRes.json();
       shellyDeviceId = info.id || info.mac;
-      
-      setStatusMessage('Configuring Device (2/2)...');
-      await unifiedFetch(`http://${localIp}/rpc/Webhook.Create`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          cid: 0,
-          enable: true,
-          event: "sys.online", 
-          urls: [cloudflareUrl]
-        })
-      });
-      
-      const { addDevice } = await import('../utils/VehicleManager');
-      addDevice({
-        id: 'brv_sh_' + Math.random().toString(36).substr(2, 9),
-        type: 'shelly_sensor',
-        role: deviceRole,
-        name: deviceRole,
-        shellyDeviceId: shellyDeviceId
-      });
-      
-      setStep('completion');
+      // Auto-identify the sensor type from the device's reported model/app
+      const detected = detectRole(info);
+      setDetectedModel(info.model || info.app || info.id || '');
+      if (detected) { setDeviceRole(detected); setRoleAutoDetected(true); }
+      else { setRoleAutoDetected(false); }
+      setShellyId(shellyDeviceId);
+
+      // Cloud webhook only when signed in (routes alerts through the cloud worker).
+      if (auth.currentUser) {
+        setStatusMessage('Configuring Cloud Alerts (2/2)...');
+        const cloudflareUrl = 'https://boat-rv-guardian-worker.yourdomain.workers.dev/api/shelly';
+        await unifiedFetch(`http://${localIp}/rpc/Webhook.Create`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ cid: 0, enable: true, event: 'sys.online', urls: [cloudflareUrl] })
+        });
+      }
+
+      // Confirm/override the (auto-detected) device type before adding it
+      setStep('confirm_type');
     } catch (e: any) {
       setStatusMessage(`Error: ${e.message}. Ensure the IP is correct and on your network.`);
     } finally {
@@ -177,19 +234,17 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
       
       setTimeout(async () => {
         setStatusMessage('Configuring cloud Webhook via BLE...');
-        
-        const { addDevice } = await import('../utils/VehicleManager');
+
         const selectedDev = bleDevices.find(d => d.id === selectedBleDevice);
-        
-        addDevice({
-          id: 'brv_sh_' + Math.random().toString(36).substr(2, 9),
-          type: 'shelly_sensor',
-          role: deviceRole,
-          name: deviceRole,
-          shellyDeviceId: selectedDev ? selectedDev.name.split('-')[1] || 'BLE_DEVICE' : 'BLE_DEVICE'
-        });
-        
-        setStep('completion');
+        // Auto-identify from the advertised BLE name (e.g. "ShellyFlood-987654")
+        const detected = selectedDev ? detectRole({ id: selectedDev.name, model: selectedDev.name }) : null;
+        setDetectedModel(selectedDev ? selectedDev.name : '');
+        if (detected) { setDeviceRole(detected); setRoleAutoDetected(true); }
+        else { setRoleAutoDetected(false); }
+        setShellyId(selectedDev ? selectedDev.name.split('-')[1] || 'BLE_DEVICE' : 'BLE_DEVICE');
+
+        // Confirm/override the (auto-detected) device type before adding it
+        setStep('confirm_type');
         setIsProcessing(false);
       }, 1500);
     }, 1500);
@@ -285,12 +340,46 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '10px' }}>Enter the Wi-Fi details for your Boat/RV network.</p>
             <div>
-              <label className="form-label">Wi-Fi Network Name (SSID)</label>
-              <input className="form-input" type="text" value={ssid} onChange={e => setSsid(e.target.value)} placeholder="e.g. BoatNetwork" />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="form-label">Wi-Fi Network Name (SSID)</label>
+                <button
+                  className="btn-secondary"
+                  onClick={handleScanWifi}
+                  disabled={isScanningWifi}
+                  style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                >
+                  {isScanningWifi ? 'Scanning…' : '📡 Scan'}
+                </button>
+              </div>
+              {wifiScanResults.length > 0 ? (
+                <select className="form-input" value={ssid} onChange={e => setSsid(e.target.value)}>
+                  {!wifiScanResults.some(r => r.ssid === ssid) && <option value={ssid}>{ssid || 'Select a network…'}</option>}
+                  {wifiScanResults.map(r => (
+                    <option key={r.ssid} value={r.ssid}>{r.ssid} ({r.rssi} dBm)</option>
+                  ))}
+                </select>
+              ) : (
+                <input className="form-input" type="text" value={ssid} onChange={e => setSsid(e.target.value)} placeholder="e.g. BoatNetwork" />
+              )}
+              {wifiScanResults.length > 0 && (
+                <button
+                  onClick={() => setWifiScanResults([])}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 0 0 0' }}
+                >
+                  Enter manually instead
+                </button>
+              )}
+              {wifiScanMsg && <div style={{ color: '#fde68a', fontSize: '0.78rem', marginTop: '6px' }}>{wifiScanMsg}</div>}
             </div>
             <div>
               <label className="form-label">Wi-Fi Password</label>
-              <input className="form-input" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+              <div style={{ position: 'relative' }}>
+                <input className="form-input" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} style={{ paddingRight: '44px', width: '100%' }} />
+                <button type="button" onClick={() => setShowPassword(s => !s)} aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', padding: '4px' }}>
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
               <button className="btn-secondary" onClick={() => {
@@ -311,7 +400,13 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
             </div>
             <div>
               <label className="form-label">Shelly Device Password (Optional)</label>
-              <input className="form-input" type="password" value={shellyPassword} onChange={e => setShellyPassword(e.target.value)} placeholder="Leave blank if no auth enabled" />
+              <div style={{ position: 'relative' }}>
+                <input className="form-input" type={showShellyPassword ? 'text' : 'password'} value={shellyPassword} onChange={e => setShellyPassword(e.target.value)} placeholder="Leave blank if no auth enabled" style={{ paddingRight: '44px', width: '100%' }} />
+                <button type="button" onClick={() => setShowShellyPassword(s => !s)} aria-label={showShellyPassword ? 'Hide password' : 'Show password'}
+                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', padding: '4px' }}>
+                  {showShellyPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
             
             {statusMessage && <div style={{ color: '#ef4444', fontSize: '0.9rem', marginTop: '10px' }}>{statusMessage}</div>}
@@ -363,6 +458,35 @@ export default function ProvisionShellyModal({ onClose }: { onClose: () => void 
               <button className="btn-primary" onClick={executeBluetoothProvisioning} disabled={isProcessing}>
                 {isProcessing ? 'Processing...' : 'Start Provisioning'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'confirm_type' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <h3 style={{ margin: 0, color: '#fff' }}>Confirm Device Type</h3>
+            {detectedModel && (
+              <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
+                Detected hardware: <strong style={{ color: 'var(--accent-cyan)' }}>{detectedModel}</strong>
+              </p>
+            )}
+            <div>
+              <label className="form-label">
+                Sensor type {roleAutoDetected ? '(auto-detected — change if wrong)' : '(please confirm)'}
+              </label>
+              <select className="form-input" value={deviceRole} onChange={(e) => { setDeviceRole(e.target.value); setRoleAutoDetected(false); }}>
+                <option value="High Power Sensor">High Power Sensor (120v/240v)</option>
+                <option value="Low Power Sensor">Low Power Sensor (10-26v)</option>
+                <option value="Flood Sensor">Flood Sensor</option>
+              </select>
+              {roleAutoDetected && (
+                <div style={{ color: '#a7f3d0', fontSize: '0.78rem', marginTop: '6px' }}>
+                  ✓ We identified this device as a <strong>{deviceRole}</strong>. Adjust above if that's not right.
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-primary" onClick={finalizeAddDevice}>Add Device</button>
             </div>
           </div>
         )}

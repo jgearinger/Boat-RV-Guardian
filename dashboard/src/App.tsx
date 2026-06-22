@@ -6,6 +6,8 @@ import Settings from './pages/Settings';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { auth, onAuthStateChanged } from './services/firebase';
 import SyncModal from './components/SyncModal';
+import Login from './pages/Login';
+import { isLocalProfileFresh } from './utils/configSync';
 
 type AppView = 'home' | 'fresh_water' | 'high_water' | 'batteries' | 'shore_power' | 'settings';
 
@@ -14,14 +16,23 @@ export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // First-run login prompt: shown when the app opens unauthenticated on an untouched profile.
+  // Dismissable; once dismissed (or once the user signs in) it stays gone for the session.
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [loginPromptDismissed, setLoginPromptDismissed] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
+      if (currentUser) {
+        setShowLoginPrompt(false);
+      } else if (!loginPromptDismissed && isLocalProfileFresh()) {
+        setShowLoginPrompt(true);
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [loginPromptDismissed]);
 
   if (loading) {
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: 'var(--accent)' }}>Loading...</div>;
@@ -30,6 +41,28 @@ export default function App() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
       <SyncModal />
+      {showLoginPrompt && !user && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.8)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(5px)'
+        }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '440px' }}>
+            <button
+              onClick={() => { setShowLoginPrompt(false); setLoginPromptDismissed(true); }}
+              aria-label="Close"
+              style={{
+                position: 'absolute', top: '8px', right: '8px', zIndex: 1,
+                background: 'rgba(0,0,0,0.4)', border: 'none', color: '#fff',
+                fontSize: '1.4rem', lineHeight: 1, width: '32px', height: '32px',
+                borderRadius: '50%', cursor: 'pointer'
+              }}
+            >×</button>
+            <Login />
+          </div>
+        </div>
+      )}
       <header style={{ padding: '20px', background: 'var(--bg-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexShrink: 0, zIndex: 11 }}>
         <div style={{
           width: '45px',
