@@ -1,133 +1,212 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+const repo = 'https://github.com/jgearinger/Boat-RV-Guardian';
+
+const faqs = [
+	{
+		q: 'Is it really free?',
+		a: 'The core app is free and open-source under GPL-3.0 — no license fee to run it, and you can always self-host. Some advanced features may be offered as optional paid add-ons in the future to help sustain development, but the core monitoring and protection will stay free. Your only required cost is the off-the-shelf hardware you choose.',
+	},
+	{
+		q: 'What hardware do I need to get started?',
+		a: 'At minimum, a LinkTap valve + gateway for water control, or a Shelly Flood Gen4 for leak detection. You can start with one system and add the others over time. The Supported Devices page lists kits and individual parts with prices.',
+	},
+	{
+		q: 'Does it work without internet?',
+		a: 'Yes — Guardian is local-first. When your device is on the same Wi-Fi as your sensors and gateway, it talks to them directly with zero latency and no internet. Cloud mode kicks in automatically when you leave, so you keep remote alerts and control.',
+	},
+	{
+		q: 'Is my data private?',
+		a: 'Your real-time readings stay on your local network unless you explicitly enable cloud sync. Cloud sync only exists to deliver remote alerts and control when you are away — and since the project is open-source, you can verify exactly what it does.',
+	},
+	{
+		q: 'Which platforms are supported?',
+		a: 'Web (any browser), native macOS and Windows desktop apps (Tauri), and Android (Capacitor APK). An iOS build is on the roadmap; in the meantime the web app works on iPhone and iPad.',
+	},
+	{
+		q: 'Can I contribute or request a feature?',
+		a: 'Absolutely — that is the whole point. Open an issue for bugs or ideas, start a discussion to ask questions, or send a pull request. Hardware suggestions from fellow boaters and RVers are especially welcome.',
+	},
+];
 ---
 
-<Layout title="Support & Docs | Boat & Rv Guardian">
-	<div class="page-header">
+<Layout title="Support | Boat & RV Guardian">
+	<section class="page-hero">
 		<div class="container">
-			<h1>Support & Documentation</h1>
-			<p>Guides on setting up your DIY monitoring system from start to finish.</p>
+			<span class="eyebrow">Support</span>
+			<h1>Get help &amp; get involved</h1>
+			<p>Guardian is a community open-source project — there's no call center, and that's by design. Help comes straight from the people who build and use it. Looking for setup how-tos? See <a href="/getting-started">Getting Started</a>.</p>
 		</div>
-	</div>
+	</section>
 
 	<div class="container main-content">
-		
-		<div class="docs-grid">
-			<a href="https://github.com/jgearinger/Boat-RV-Guardian/blob/main/PHYSICAL_SETUP.md" class="glass-card doc-card" target="_blank" rel="noopener noreferrer">
-				<div class="icon">🔧</div>
-				<h3>Physical Setup Guide</h3>
-				<p>Learn how to physically install the LinkTap valve into your plumbing and place your Shelly sensors.</p>
-				<span class="read-more">Read Guide &rarr;</span>
-			</a>
 
-			<a href="https://github.com/jgearinger/Boat-RV-Guardian/blob/main/LOCAL_API_SETUP.md" class="glass-card doc-card" target="_blank" rel="noopener noreferrer">
-				<div class="icon">🌐</div>
-				<h3>Local API Setup</h3>
-				<p>Instructions on configuring your LinkTap gateway to allow local network requests without the internet.</p>
-				<span class="read-more">Read Guide &rarr;</span>
+		<!-- Help channels -->
+		<section class="channels">
+			<a href={`${repo}/issues/new`} class="glass-card channel-card" target="_blank" rel="noopener noreferrer">
+				<div class="channel-icon">🐛</div>
+				<h3>Report a bug</h3>
+				<p>Something broken or behaving oddly? Open an issue with steps to reproduce and we'll dig in.</p>
+				<span class="channel-link">Open an issue &rarr;</span>
 			</a>
+			<a href={`${repo}/discussions`} class="glass-card channel-card" target="_blank" rel="noopener noreferrer">
+				<div class="channel-icon">💬</div>
+				<h3>Ask a question</h3>
+				<p>Not sure how to wire something or which sensor to buy? Start a discussion with the community.</p>
+				<span class="channel-link">Open discussions &rarr;</span>
+			</a>
+			<a href="/getting-started" class="glass-card channel-card">
+				<div class="channel-icon">📖</div>
+				<h3>Getting started</h3>
+				<p>Step-by-step install guides, webhook setup, and how the whole system fits together.</p>
+				<span class="channel-link">View the guide &rarr;</span>
+			</a>
+			<a href={`${repo}/pulls`} class="glass-card channel-card" target="_blank" rel="noopener noreferrer">
+				<div class="channel-icon">🛠️</div>
+				<h3>Contribute</h3>
+				<p>Fix a bug, add a sensor integration, or improve the docs. Pull requests are always welcome.</p>
+				<span class="channel-link">View pull requests &rarr;</span>
+			</a>
+			<a href={`${repo}/issues`} class="glass-card channel-card" target="_blank" rel="noopener noreferrer">
+				<div class="channel-icon">🎯</div>
+				<h3>Advanced support</h3>
+				<p>Stuck on a tricky install or integration? Track it directly in the project's GitHub issues queue, where it's visible to maintainers and the community.</p>
+				<span class="channel-link">Go to GitHub issues &rarr;</span>
+			</a>
+		</section>
 
-			<a href="https://github.com/jgearinger/Boat-RV-Guardian/blob/main/PUSH_NOTIFICATIONS_SETUP.md" class="glass-card doc-card" target="_blank" rel="noopener noreferrer">
-				<div class="icon">🔔</div>
-				<h3>Push Notifications Setup</h3>
-				<p>How to configure Cloudflare Workers and Firebase to receive critical alerts on your mobile device.</p>
-				<span class="read-more">Read Guide &rarr;</span>
-			</a>
-			
-			<a href="https://github.com/jgearinger/Boat-RV-Guardian" class="glass-card doc-card" target="_blank" rel="noopener noreferrer">
-				<div class="icon">💻</div>
-				<h3>GitHub Repository</h3>
-				<p>View the source code, open issues, or contribute to the project.</p>
-				<span class="read-more">View Source &rarr;</span>
-			</a>
-		</div>
+		<!-- FAQ -->
+		<section class="faq-section">
+			<div class="section-header">
+				<h2>Frequently asked questions</h2>
+				<p>The quick answers most people are after.</p>
+			</div>
+			<div class="faq-list">
+				{faqs.map((f) => (
+					<details class="faq-item glass-card">
+						<summary>
+							<span>{f.q}</span>
+							<span class="faq-chevron">+</span>
+						</summary>
+						<p>{f.a}</p>
+					</details>
+				))}
+			</div>
+		</section>
 
-		<section class="glass-card contact-section">
-			<h2>Need more help?</h2>
-			<p>Since this is a pro-bono, open-source project, the best way to get help is to open an issue on our GitHub repository. We actively monitor issues and try to help the community when possible.</p>
-			<a href="https://github.com/jgearinger/Boat-RV-Guardian/issues" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Open an Issue on GitHub</a>
+		<!-- Community CTA -->
+		<section class="community-cta">
+			<div class="glass-card cta-inner">
+				<div class="card-icon">🤝</div>
+				<h2>Built by the community, for the community</h2>
+				<p>Every fix and feature comes from people who actually live this life. If Guardian saved your trip — or you found a way to make it better — jump in on GitHub.</p>
+				<div class="cta-actions">
+					<a href={repo} class="btn btn-primary" target="_blank" rel="noopener noreferrer">★ Star on GitHub</a>
+					<a href={`${repo}/issues`} class="btn btn-outline" target="_blank" rel="noopener noreferrer">Browse open issues</a>
+				</div>
+			</div>
 		</section>
 
 	</div>
 </Layout>
 
 <style>
-	.page-header {
-		background: rgba(14, 165, 233, 0.05);
-		border-bottom: 1px solid var(--surface-border);
-		padding: 4rem 0;
-		margin-bottom: 4rem;
-		text-align: center;
-	}
+	.main-content { padding-bottom: 2rem; }
 
-	.page-header h1 {
-		font-size: 3rem;
-		margin-bottom: 1rem;
-		color: #fff;
-	}
-
-	.page-header p {
-		font-size: 1.2rem;
-		color: var(--text-muted);
-		max-width: 600px;
-		margin: 0 auto;
-	}
-
-	.docs-grid {
+	/* Channels */
+	.channels {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-		gap: 2rem;
-		margin-bottom: 4rem;
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		gap: 1.5rem;
+		margin-bottom: 5rem;
 	}
 
-	.doc-card {
+	.channel-card {
 		display: block;
 		text-decoration: none;
 		color: inherit;
-		transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+		padding: 2rem;
 	}
 
-	.doc-card:hover {
-		transform: translateY(-5px);
-		border-color: var(--accent-color);
-		box-shadow: 0 10px 30px rgba(14, 165, 233, 0.15);
+	.channel-card:hover { border-color: var(--accent-color); }
+	.channel-icon { font-size: 2.25rem; margin-bottom: 1rem; }
+	.channel-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; color: #fff; }
+	.channel-card p { color: var(--text-muted); font-size: 0.92rem; margin-bottom: 1rem; line-height: 1.55; }
+	.channel-link { color: var(--accent-color); font-weight: 600; font-size: 0.88rem; }
+
+	/* Section header */
+	.section-header { text-align: center; max-width: 640px; margin: 0 auto 2.5rem; }
+	.section-header h2 { font-size: 2rem; margin-bottom: 0.75rem; }
+	.section-header p { color: var(--text-muted); }
+
+	/* FAQ */
+	.faq-section { margin-bottom: 5rem; }
+
+	.faq-list {
+		max-width: 800px;
+		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
 	}
 
-	.doc-card .icon {
-		font-size: 2.5rem;
-		margin-bottom: 1rem;
+	.faq-item {
+		padding: 0;
+		overflow: hidden;
 	}
 
-	.doc-card h3 {
-		font-size: 1.25rem;
-		margin-bottom: 0.5rem;
-		color: #fff;
-	}
-
-	.doc-card p {
-		color: var(--text-muted);
-		margin-bottom: 1.5rem;
-		font-size: 0.95rem;
-	}
-
-	.read-more {
-		color: var(--accent-color);
+	.faq-item summary {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+		padding: 1.25rem 1.5rem;
+		cursor: pointer;
+		font-family: var(--font-heading);
 		font-weight: 600;
-		font-size: 0.9rem;
+		font-size: 1.05rem;
+		color: #fff;
+		list-style: none;
 	}
 
-	.contact-section {
-		text-align: center;
-		padding: 4rem 2rem;
+	.faq-item summary::-webkit-details-marker { display: none; }
+
+	.faq-chevron {
+		font-size: 1.5rem;
+		color: var(--accent-color);
+		font-weight: 300;
+		transition: transform 0.2s ease;
+		flex-shrink: 0;
 	}
 
-	.contact-section h2 {
-		margin-bottom: 1rem;
-	}
+	.faq-item[open] .faq-chevron { transform: rotate(45deg); }
 
-	.contact-section p {
+	.faq-item p {
+		margin: 0;
+		padding: 0 1.5rem 1.5rem;
 		color: var(--text-muted);
-		max-width: 600px;
-		margin: 0 auto 2rem;
+		line-height: 1.65;
+	}
+
+	/* Community CTA */
+	.community-cta { margin-bottom: 2rem; }
+
+	.cta-inner {
+		text-align: center;
+		padding: 3.5rem 2rem;
+		background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(139, 92, 246, 0.08));
+		border-color: rgba(14, 165, 233, 0.25);
+	}
+
+	.cta-inner .card-icon { font-size: 3rem; margin-bottom: 1rem; }
+	.cta-inner h2 { font-size: 1.8rem; margin-bottom: 1rem; }
+	.cta-inner p { color: var(--text-muted); max-width: 600px; margin: 0 auto 2rem; font-size: 1.05rem; }
+
+	.cta-actions {
+		display: flex;
+		gap: 1rem;
+		justify-content: center;
+		flex-wrap: wrap;
 	}
 </style>

@@ -2,124 +2,245 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Boat & Rv Guardian | Premium Smart Monitoring">
+<Layout title="Boat & RV Guardian | Open-Source Monitoring for Boats & RVs">
 	<!-- Hero Section -->
 	<section class="hero">
 		<div class="hero-bg-glow"></div>
 		<div class="container hero-container">
 			<div class="hero-content">
-				<h1 class="hero-title"><span class="text-gradient">Monitor</span> your vessel or rig's critical systems, whether you're onboard or miles away.</h1>
+				<span class="hero-eyebrow">Open Source · GPL-3.0 · Free Core App</span>
+				<h1 class="hero-title"><span class="text-gradient">Protect</span> your boat or RV — even when you're miles away.</h1>
 				<p class="hero-subtitle">
-					An open-source platform that helps protect your most important assets. Dead batteries mean failed bilge pumps. Burst pipes hooked to unlimited city water sink boats. Protect your vessel and RV with low-cost, off-the-shelf sensors and automatic shutoff valves.
+					A free, open-source platform that watches your most critical systems. Dead batteries stop bilge pumps. A burst line on an unlimited city-water hookup can sink a boat or flood a cabin. Guardian catches it early — using affordable, off-the-shelf sensors and automatic shutoff valves.
 				</p>
 				<div class="hero-actions">
-					<a href="#downloads" class="btn btn-primary">Download App</a>
+					<a href="#downloads" class="btn btn-primary">Get the App — Free</a>
 					<a href="https://github.com/jgearinger/Boat-RV-Guardian" class="btn btn-outline">View on GitHub</a>
 				</div>
+				<ul class="hero-trust">
+					<li>⭐ Open source</li>
+					<li>🔒 Local-first &amp; private</li>
+					<li>🆓 Free core app</li>
+					<li>🛠️ Off-the-shelf hardware</li>
+				</ul>
 			</div>
 			<div class="hero-image-wrapper">
-				<img src="/hero-dashboard.png" alt="Boat & Rv Guardian Dashboard Interface" class="hero-image" />
+				<img src="/hero-dashboard.png" alt="Boat & RV Guardian dashboard showing battery, water, and flood status" class="hero-image" />
 				<div class="glass-float float-1">
 					<div class="float-icon">🔋</div>
 					<div>
 						<strong>House Battery</strong>
-						<span class="status-ok">13.2V - Charging</span>
+						<span class="status-ok">13.2V · Charging</span>
 					</div>
 				</div>
 				<div class="glass-float float-2">
 					<div class="float-icon">🚨</div>
 					<div>
-						<strong>High Water Sensor</strong>
+						<strong>Bilge Sensor</strong>
 						<span class="status-ok">Dry</span>
 					</div>
+				</div>
+				<span class="image-badge">Illustrative preview</span>
+				<span class="hero-image-caption">Illustrative preview — the actual app may look different.</span>
+			</div>
+		</div>
+	</section>
+
+	<!-- The Problem -->
+	<section class="problem-section container">
+		<div class="section-header">
+			<h2>What's at stake</h2>
+			<p>The failures that ruin a trip — or total a vessel — are almost always quiet ones. They happen while you're asleep, at the office, or three states away.</p>
+		</div>
+		<div class="problem-grid">
+			<div class="glass-card problem-card">
+				<div class="problem-icon">🌊</div>
+				<h3>City water never sleeps</h3>
+				<p>A cracked fitting or burst hose on an unlimited city-water hookup can push <strong>hundreds of gallons</strong> into your cabin or coach while you're away. There's no tank to run dry.</p>
+			</div>
+			<div class="glass-card problem-card">
+				<div class="problem-icon">🔋</div>
+				<h3>A dead battery is a dead bilge pump</h3>
+				<p>Lose your 12V system and you lose the bilge pump, the fridge, and your safety electronics. On the water, a flat house bank can quietly become an emergency.</p>
+			</div>
+			<div class="glass-card problem-card">
+				<div class="problem-icon">⚡</div>
+				<h3>Shore power drops silently</h3>
+				<p>A tripped pedestal at the marina or campground kills your charging and refrigeration — and you won't know until the food spoils or the batteries are flat.</p>
+			</div>
+		</div>
+	</section>
+
+	<!-- How It Works -->
+	<section class="how-it-works">
+		<div class="container row-reverse-layout">
+			<div class="content-side">
+				<span class="hero-eyebrow">How it works</span>
+				<h2>Smart-home hardware, built for the water and the road</h2>
+				<p>Guardian doesn't sell you proprietary marine electronics at marine prices. It turns the same affordable IoT sensors and valves used in millions of homes — LinkTap and Shelly — into a purpose-built monitoring system for vessels and rigs.</p>
+				<ul class="benefit-list">
+					<li><strong>Sense:</strong> Flood sensors, voltage monitors, and power meters watch the systems that matter.</li>
+					<li><strong>Decide:</strong> The app — on your phone, laptop, or nav station — tracks every reading in real time.</li>
+					<li><strong>Act:</strong> When a line bursts, the LinkTap valve slams shut automatically and you get a push notification anywhere in the world.</li>
+				</ul>
+				<a href="/devices" class="btn btn-outline" style="margin-top: 0.5rem;">See the hardware &amp; costs &rarr;</a>
+			</div>
+			<div class="image-side">
+				<img src="/smart-hardware.png" alt="The off-the-shelf smart hardware Guardian connects to" class="feature-image" />
+			</div>
+		</div>
+	</section>
+
+	<!-- Key Features Grid -->
+	<section class="features-section container">
+		<div class="section-header">
+			<h2>One dashboard for everything</h2>
+			<p>Water, power, and climate — monitored locally when you're aboard, and over the cloud when you're not.</p>
+		</div>
+
+		<div class="features-grid">
+			<div class="glass-card feature-card">
+				<div class="feature-icon">🌊</div>
+				<h3>Automatic water shutoff</h3>
+				<p>LinkTap smart valves meter real-time flow and slam shut the instant usage spikes past your limit — stopping a burst line before it floods.</p>
+			</div>
+			<div class="glass-card feature-card">
+				<div class="feature-icon">🔋</div>
+				<h3>12V &amp; shore power health</h3>
+				<p>Track house and starter banks plus shore-power status with the Shelly Uni and PM Mini, so a dead battery never strands you.</p>
+			</div>
+			<div class="glass-card feature-card">
+				<div class="feature-icon">📡</div>
+				<h3>Instant cloud alerts</h3>
+				<p>Shelly sensors fire straight to a Cloudflare Worker, so the push notification reaches you the second water is detected — wherever you are.</p>
+			</div>
+			<div class="glass-card feature-card">
+				<div class="feature-icon">💻</div>
+				<h3>Works offline, local-first</h3>
+				<p>Aboard and off-grid, the app talks directly to your sensors with zero latency and zero internet. No cloud required to stay protected.</p>
+			</div>
+		</div>
+	</section>
+
+	<!-- Tailored Protection -->
+	<section class="protection-section container">
+		<div class="section-header">
+			<h2>Tailored to how you travel</h2>
+			<p>The same system, tuned for the realities of life on the water and on the road.</p>
+		</div>
+
+		<div class="protection-grid">
+			<div class="glass-card protection-card boat-card">
+				<div class="card-icon">⛵</div>
+				<h3>For your boat</h3>
+				<ul class="protection-list">
+					<li>
+						<strong>Bilge pump readiness</strong>
+						<span>Keep batteries charged so the pump runs when it has to.</span>
+					</li>
+					<li>
+						<strong>Freshwater burst mitigation</strong>
+						<span>Shut the water the moment a freshwater line lets go.</span>
+					</li>
+					<li>
+						<strong>Power assurance</strong>
+						<span>Know your charging is alive before you leave the slip.</span>
+					</li>
+				</ul>
+			</div>
+
+			<div class="glass-card protection-card rv-card">
+				<div class="card-icon">🚐</div>
+				<h3>For your RV</h3>
+				<ul class="protection-list">
+					<li>
+						<strong>No dead batteries</strong>
+						<span>Catch deep discharge before it kills your bank or starter.</span>
+					</li>
+					<li>
+						<strong>Burst-pipe defense</strong>
+						<span>Limit damage from city-water plumbing failures while you're out.</span>
+					</li>
+					<li>
+						<strong>Peace of mind</strong>
+						<span>Leave the campsite knowing the coach is watching itself.</span>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</section>
+
+	<!-- Open Source Story -->
+	<section class="opensource-section">
+		<div class="container">
+			<div class="section-header">
+				<span class="hero-eyebrow">Why it's free</span>
+				<h2>Built by boaters and RVers, for boaters and RVers</h2>
+				<p>Guardian started with a simple frustration: the gear to protect a vessel or rig was overpriced, locked down, and rented back to you by subscription. So we built the opposite — and gave it away.</p>
+			</div>
+			<div class="glass-card opensource-card">
+				<div class="opensource-grid">
+					<div class="os-item">
+						<h4>💸 Free core, no catch</h4>
+						<p>The core app is free and open-source — no license to run it, and you can always self-host. Advanced features may arrive as optional paid add-ons later, but core monitoring and protection stay free.</p>
+					</div>
+					<div class="os-item">
+						<h4>🔓 No vendor lock-in</h4>
+						<p>Licensed under GPL-3.0. Read the code, build it yourself, fork it, or run it forever. The project can't be taken away from you.</p>
+					</div>
+					<div class="os-item">
+						<h4>🔒 Your data stays yours</h4>
+						<p>Local-first by design. Readings live on your own network unless you explicitly turn on cloud sync for remote alerts.</p>
+					</div>
+					<div class="os-item">
+						<h4>🤝 Community-driven</h4>
+						<p>Every fix, sensor, and feature comes from people who actually live this. Open an issue, share a build, or send a pull request.</p>
+					</div>
+				</div>
+				<div class="opensource-cta">
+					<a href="https://github.com/jgearinger/Boat-RV-Guardian" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Star &amp; explore on GitHub</a>
+					<a href="/support" class="btn btn-outline">Get involved</a>
 				</div>
 			</div>
 		</div>
 	</section>
 
 	<!-- Downloads Section -->
-	<section id="downloads" class="downloads-section container">
-		<div class="section-header">
-			<h2>Download the App</h2>
-			<p>Boat & Rv Guardian is available on all major platforms. Launch the web dashboard directly, or download the native apps for offline capability.</p>
-		</div>
-		<div class="downloads-grid">
-			<a href="/app/" class="glass-card download-card">
-				<div class="feature-icon">🌐</div>
-				<h3>Web Dashboard</h3>
-				<p>Launch the live browser-based app directly to configure and monitor your system.</p>
-			</a>
-			<a href="https://downloads.boatrvguardian.com/boat-rv-guardian_latest.apk" class="glass-card download-card">
-				<div class="feature-icon">📱</div>
-				<h3>Android APK</h3>
-				<p>Sideload the mobile app for on-the-go monitoring and instant push notifications.</p>
-			</a>
-			<a href="https://downloads.boatrvguardian.com/boat-rv-guardian_latest.dmg" class="glass-card download-card">
-				<div class="feature-icon">🍎</div>
-				<h3>macOS App</h3>
-				<p>Native Apple Silicon and Intel desktop app for your navigation station.</p>
-			</a>
-			<a href="https://downloads.boatrvguardian.com/boat-rv-guardian_latest.exe" class="glass-card download-card">
-				<div class="feature-icon">🪟</div>
-				<h3>Windows App</h3>
-				<p>Native Windows desktop app optimized for low-power onboard PCs.</p>
-			</a>
-		</div>
-		<div style="text-align: center; margin-top: 3rem;">
-			<p style="color: var(--text-muted); font-size: 0.95rem;">
-				Looking for older versions? 
-				<a href="https://github.com/jgearinger/Boat-RV-Guardian/releases" target="_blank" rel="noopener noreferrer" style="color: var(--accent-color); text-decoration: underline; font-weight: 500;">
-					View all releases on GitHub &rarr;
+	<section id="downloads" class="downloads-section">
+		<div class="container">
+			<div class="section-header">
+				<h2>Get the app</h2>
+				<p>Launch the web dashboard instantly, or install a native app for offline control and push notifications.</p>
+			</div>
+			<div class="downloads-grid">
+				<a href="/app/" class="glass-card download-card">
+					<div class="feature-icon">🌐</div>
+					<h3>Web Dashboard</h3>
+					<p>Launch the live browser app to configure and monitor your system — nothing to install.</p>
 				</a>
-			</p>
-		</div>
-	</section>
-
-	<!-- Key Solutions Grid -->
-	<section class="features-section container">
-		<div class="section-header">
-			<h2>The Value of Monitoring</h2>
-			<p>Stop worrying about dead starter batteries or returning to a flooded cabin. Our Flow Tool (LinkTap) and low-cost Shelly sensors give you peace of mind whether you're off-grid or connected to endless city water.</p>
-		</div>
-
-		<div class="features-grid">
-			<div class="glass-card feature-card">
-				<div class="feature-icon">🔋</div>
-				<h3>12V Power Monitoring</h3>
-				<p>Keep a constant eye on your house batteries and shore power status using custom hardware integrations like the Shelly Uni.</p>
+				<a href="https://downloads.boatrvguardian.com/boat-rv-guardian_latest.apk" class="glass-card download-card">
+					<div class="feature-icon">📱</div>
+					<h3>Android APK</h3>
+					<p>Sideload the mobile app for on-the-go monitoring and instant push notifications.</p>
+				</a>
+				<a href="https://downloads.boatrvguardian.com/boat-rv-guardian_latest.dmg" class="glass-card download-card">
+					<div class="feature-icon">🍎</div>
+					<h3>macOS App</h3>
+					<p>Native Apple Silicon and Intel desktop app for your navigation station.</p>
+				</a>
+				<a href="https://downloads.boatrvguardian.com/boat-rv-guardian_latest.exe" class="glass-card download-card">
+					<div class="feature-icon">🪟</div>
+					<h3>Windows App</h3>
+					<p>Native Windows desktop app optimized for low-power onboard PCs.</p>
+				</a>
 			</div>
-			<div class="glass-card feature-card">
-				<div class="feature-icon">🌊</div>
-				<h3>Smart Water Shutoff</h3>
-				<p>Integration with LinkTap smart valves provides real-time flow metering and instant emergency shutoffs to prevent catastrophic floods.</p>
-			</div>
-			<div class="glass-card feature-card">
-				<div class="feature-icon">📡</div>
-				<h3>Instant Cloud Alerts</h3>
-				<p>Using Shelly sensors and Cloudflare Workers, our webhook receiver guarantees you get a push notification the second water is detected.</p>
-			</div>
-			<div class="glass-card feature-card">
-				<div class="feature-icon">💻</div>
-				<h3>Local API Mode</h3>
-				<p>When you're onboard, the app communicates directly with your sensors and gateway for zero-latency control without relying on the cloud.</p>
-			</div>
-		</div>
-	</section>
-
-	<!-- How It Works Section -->
-	<section class="how-it-works">
-		<div class="container row-reverse-layout">
-			<div class="content-side">
-				<h2>The Hardware Ecosystem</h2>
-				<p>Boat & Rv Guardian isn't just software; it's an orchestration of the best off-the-shelf smart hardware. We securely link Shelly Wi-Fi sensors to LinkTap gateways without relying on fragile third-party integrations.</p>
-				<ul class="benefit-list">
-					<li><strong>Local API Mode:</strong> When you're onboard, the app communicates directly with your gateway for zero-latency control.</li>
-					<li><strong>Cloud Fallback:</strong> When you leave the marina or campsite, cloud polling takes over seamlessly.</li>
-				</ul>
-				<a href="/devices" class="btn btn-outline" style="margin-top: 1rem;">View Supported Devices &rarr;</a>
-			</div>
-			<div class="image-side">
-				<img src="/smart-hardware.png" alt="Smart Hardware Connection Abstract" class="feature-image" />
+			<div style="text-align: center; margin-top: 3rem;">
+				<p style="color: var(--text-muted); font-size: 0.95rem;">
+					Looking for older versions?
+					<a href="https://github.com/jgearinger/Boat-RV-Guardian/releases" target="_blank" rel="noopener noreferrer" style="color: var(--accent-color); text-decoration: underline; font-weight: 500;">
+						View all releases on GitHub &rarr;
+					</a>
+				</p>
 			</div>
 		</div>
 	</section>
@@ -128,12 +249,12 @@ import Layout from '../layouts/Layout.astro';
 	<section class="cta-section container">
 		<div class="glass-card cta-card">
 			<div class="cta-content">
-				<h2>Ready to secure your rig?</h2>
-				<p>Join the open-source community building better tools for digital nomads and mariners.</p>
+				<h2>Ready to protect your rig?</h2>
+				<p>Pick your hardware, install the app, and travel knowing your vessel is watching itself.</p>
 			</div>
 			<div class="cta-actions">
-				<a href="https://github.com/jgearinger/Boat-RV-Guardian" class="btn btn-primary">View on GitHub</a>
-				<a href="/devices" class="btn btn-outline">See Supported Devices</a>
+				<a href="/devices" class="btn btn-primary">See Supported Devices</a>
+				<a href="https://github.com/jgearinger/Boat-RV-Guardian" class="btn btn-outline">View on GitHub</a>
 			</div>
 		</div>
 	</section>
@@ -143,7 +264,7 @@ import Layout from '../layouts/Layout.astro';
 	/* Hero Section */
 	.hero {
 		position: relative;
-		padding: 6rem 0 4rem;
+		padding: 5rem 0 4rem;
 		overflow: hidden;
 	}
 
@@ -161,27 +282,24 @@ import Layout from '../layouts/Layout.astro';
 
 	.hero-container {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1.1fr 1fr;
 		gap: 4rem;
 		align-items: center;
 	}
 
-	.badge {
+	.hero-eyebrow {
 		display: inline-block;
-		padding: 0.4rem 1rem;
-		background: rgba(14, 165, 233, 0.1);
-		border: 1px solid rgba(14, 165, 233, 0.3);
-		color: var(--accent-color);
-		border-radius: 20px;
-		font-size: 0.85rem;
+		font-family: var(--font-heading);
+		font-size: 0.8rem;
 		font-weight: 600;
-		margin-bottom: 1.5rem;
-		letter-spacing: 0.5px;
 		text-transform: uppercase;
+		letter-spacing: 1.5px;
+		color: var(--accent-color);
+		margin-bottom: 1.25rem;
 	}
 
 	.hero-title {
-		font-size: 4rem;
+		font-size: 3.5rem;
 		line-height: 1.1;
 		margin-bottom: 1.5rem;
 	}
@@ -189,18 +307,61 @@ import Layout from '../layouts/Layout.astro';
 	.hero-subtitle {
 		font-size: 1.15rem;
 		color: var(--text-muted);
-		margin-bottom: 2.5rem;
-		max-width: 90%;
+		margin-bottom: 2rem;
+		max-width: 95%;
 	}
 
 	.hero-actions {
 		display: flex;
 		gap: 1rem;
+		margin-bottom: 2rem;
+	}
+
+	.hero-trust {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.5rem;
+	}
+
+	.hero-trust li {
+		font-size: 0.9rem;
+		color: var(--text-main);
+		font-weight: 500;
 	}
 
 	.hero-image-wrapper {
 		position: relative;
 		perspective: 1000px;
+	}
+
+	.image-badge {
+		position: absolute;
+		top: 0.85rem;
+		right: 0.85rem;
+		z-index: 2;
+		font-family: var(--font-heading);
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--text-main);
+		background: rgba(11, 15, 25, 0.7);
+		backdrop-filter: blur(6px);
+		border: 1px solid var(--surface-border);
+		border-radius: 6px;
+		padding: 0.25rem 0.6rem;
+	}
+
+	.hero-image-caption {
+		display: block;
+		text-align: center;
+		margin-top: 1.5rem;
+		font-size: 0.8rem;
+		font-style: italic;
+		color: var(--text-muted);
 	}
 
 	.hero-image {
@@ -231,21 +392,9 @@ import Layout from '../layouts/Layout.astro';
 		animation: float 6s ease-in-out infinite;
 	}
 
-	.float-1 {
-		top: 15%;
-		left: -10%;
-		animation-delay: 0s;
-	}
-
-	.float-2 {
-		bottom: 15%;
-		right: -10%;
-		animation-delay: 2s;
-	}
-
-	.float-icon {
-		font-size: 1.5rem;
-	}
+	.float-1 { top: 15%; left: -10%; animation-delay: 0s; }
+	.float-2 { bottom: 15%; right: -10%; animation-delay: 2s; }
+	.float-icon { font-size: 1.5rem; }
 
 	.glass-float strong {
 		display: block;
@@ -253,10 +402,7 @@ import Layout from '../layouts/Layout.astro';
 		font-family: var(--font-heading);
 	}
 
-	.glass-float span {
-		font-size: 0.8rem;
-	}
-
+	.glass-float span { font-size: 0.8rem; }
 	.status-alert { color: var(--danger-color); }
 	.status-ok { color: var(--success-color); }
 
@@ -266,15 +412,11 @@ import Layout from '../layouts/Layout.astro';
 		100% { transform: translateY(0px); }
 	}
 
-	/* Features Section */
-	.features-section {
-		padding: 6rem 2rem;
-	}
-
+	/* Section header */
 	.section-header {
 		text-align: center;
-		max-width: 700px;
-		margin: 0 auto 4rem;
+		max-width: 720px;
+		margin: 0 auto 3.5rem;
 	}
 
 	.section-header h2 {
@@ -282,40 +424,46 @@ import Layout from '../layouts/Layout.astro';
 		margin-bottom: 1rem;
 	}
 
-	.features-grid {
+	.section-header p {
+		color: var(--text-muted);
+		font-size: 1.1rem;
+	}
+
+	/* Problem Section */
+	.problem-section {
+		padding: 5rem 2rem;
+	}
+
+	.problem-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 		gap: 2rem;
 	}
 
-	.feature-card {
+	.problem-card {
 		padding: 2.5rem 2rem;
+		border-top: 3px solid var(--danger-color);
 	}
 
-	.feature-icon {
+	.problem-icon {
 		font-size: 2.5rem;
-		margin-bottom: 1.5rem;
-		background: var(--surface-color);
-		width: 60px;
-		height: 60px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 12px;
-		border: 1px solid var(--surface-border);
+		margin-bottom: 1.25rem;
 	}
 
-	.feature-card h3 {
-		font-size: 1.25rem;
-		margin-bottom: 1rem;
+	.problem-card h3 {
+		font-size: 1.3rem;
+		margin-bottom: 0.75rem;
 	}
 
-	.feature-card p {
+	.problem-card p {
 		color: var(--text-muted);
-		font-size: 0.95rem;
+		font-size: 0.98rem;
+		margin: 0;
 	}
 
-	/* How It Works Layouts */
+	.problem-card strong { color: #fff; }
+
+	/* How It Works */
 	.how-it-works {
 		background: rgba(255, 255, 255, 0.02);
 		padding: 6rem 0;
@@ -331,14 +479,14 @@ import Layout from '../layouts/Layout.astro';
 	}
 
 	.content-side h2 {
-		font-size: 2.5rem;
-		margin-bottom: 1.5rem;
+		font-size: 2.3rem;
+		margin: 0.5rem 0 1.5rem;
 	}
 
 	.content-side p {
 		color: var(--text-muted);
 		font-size: 1.1rem;
-		margin-bottom: 2rem;
+		margin-bottom: 1.5rem;
 	}
 
 	.benefit-list {
@@ -362,9 +510,7 @@ import Layout from '../layouts/Layout.astro';
 		font-weight: bold;
 	}
 
-	.benefit-list strong {
-		color: #ffffff;
-	}
+	.benefit-list strong { color: #ffffff; }
 
 	.feature-image {
 		width: 100%;
@@ -373,10 +519,193 @@ import Layout from '../layouts/Layout.astro';
 		box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 	}
 
-	/* CTA Section */
-	.cta-section {
+	/* Features Section */
+	.features-section {
 		padding: 6rem 2rem;
 	}
+
+	.features-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		gap: 2rem;
+	}
+
+	.feature-card {
+		padding: 2.5rem 2rem;
+	}
+
+	.feature-icon {
+		font-size: 2rem;
+		margin-bottom: 1.5rem;
+		background: var(--surface-color);
+		width: 60px;
+		height: 60px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 12px;
+		border: 1px solid var(--surface-border);
+	}
+
+	.feature-card h3 {
+		font-size: 1.25rem;
+		margin-bottom: 1rem;
+	}
+
+	.feature-card p {
+		color: var(--text-muted);
+		font-size: 0.95rem;
+	}
+
+	/* Protection Section */
+	.protection-section {
+		padding: 6rem 2rem;
+		background: rgba(255, 255, 255, 0.01);
+		border-top: 1px solid var(--surface-border);
+	}
+
+	.protection-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 2rem;
+	}
+
+	.protection-card {
+		padding: 3rem 2.5rem;
+		position: relative;
+		overflow: hidden;
+	}
+
+	.protection-card::before {
+		content: "";
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 4px;
+		background: var(--accent-gradient);
+		opacity: 0.7;
+	}
+
+	.card-icon {
+		font-size: 3rem;
+		margin-bottom: 1.5rem;
+		display: inline-block;
+	}
+
+	.protection-card h3 {
+		font-size: 1.75rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.protection-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+	}
+
+	.protection-list li {
+		position: relative;
+		padding-left: 2rem;
+		font-size: 1rem;
+		line-height: 1.5;
+	}
+
+	.protection-list li::before {
+		content: "🛡️";
+		position: absolute;
+		left: 0;
+		top: 0.1rem;
+		font-size: 1rem;
+	}
+
+	.protection-list strong {
+		display: block;
+		color: #ffffff;
+		font-weight: 600;
+		margin-bottom: 0.25rem;
+	}
+
+	.protection-list span { color: var(--text-muted); }
+
+	/* Open Source Section */
+	.opensource-section {
+		padding: 6rem 0;
+		background: rgba(255, 255, 255, 0.02);
+		border-top: 1px solid var(--surface-border);
+		border-bottom: 1px solid var(--surface-border);
+	}
+
+	.opensource-card {
+		padding: 3rem;
+		background: linear-gradient(135deg, rgba(14, 165, 233, 0.06), rgba(139, 92, 246, 0.06));
+		border-color: rgba(14, 165, 233, 0.2);
+	}
+
+	.opensource-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		gap: 2rem;
+		margin-bottom: 2.5rem;
+	}
+
+	.os-item h4 {
+		font-size: 1.15rem;
+		margin-bottom: 0.75rem;
+		color: #fff;
+	}
+
+	.os-item p {
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		margin: 0;
+		line-height: 1.6;
+	}
+
+	.opensource-cta {
+		display: flex;
+		gap: 1rem;
+		justify-content: center;
+		flex-wrap: wrap;
+	}
+
+	/* Downloads Section */
+	.downloads-section {
+		padding: 6rem 0;
+	}
+
+	.downloads-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		gap: 2rem;
+	}
+
+	.download-card {
+		padding: 2.5rem 2rem;
+		text-decoration: none;
+		color: inherit;
+		display: block;
+	}
+
+	.download-card:hover { border-color: var(--accent-color); }
+
+	.download-card h3 {
+		font-size: 1.25rem;
+		margin-bottom: 1rem;
+		color: #fff;
+	}
+
+	.download-card p {
+		color: var(--text-muted);
+		font-size: 0.95rem;
+		margin: 0;
+	}
+
+	/* CTA Section */
+	.cta-section { padding: 6rem 2rem; }
 
 	.cta-card {
 		display: flex;
@@ -395,50 +724,13 @@ import Layout from '../layouts/Layout.astro';
 	.cta-content p {
 		color: var(--text-muted);
 		font-size: 1.1rem;
+		margin: 0;
 	}
 
 	.cta-actions {
 		display: flex;
 		gap: 1rem;
-	}
-
-	/* Downloads Section */
-	.downloads-section {
-		padding: 6rem 2rem;
-		background: rgba(255, 255, 255, 0.02);
-		border-top: 1px solid var(--surface-border);
-		border-bottom: 1px solid var(--surface-border);
-	}
-
-	.downloads-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-		gap: 2rem;
-	}
-
-	.download-card {
-		padding: 2.5rem 2rem;
-		text-decoration: none;
-		color: inherit;
-		transition: transform 0.3s ease, border-color 0.3s ease;
-		display: block;
-	}
-
-	.download-card:hover {
-		transform: translateY(-5px);
-		border-color: var(--accent-color);
-	}
-
-	.download-card h3 {
-		font-size: 1.25rem;
-		margin-bottom: 1rem;
-		color: #fff;
-	}
-
-	.download-card p {
-		color: var(--text-muted);
-		font-size: 0.95rem;
-		margin: 0;
+		flex-shrink: 0;
 	}
 
 	@media (max-width: 992px) {
@@ -446,37 +738,19 @@ import Layout from '../layouts/Layout.astro';
 			grid-template-columns: 1fr;
 			text-align: center;
 		}
-		
-		.hero-subtitle {
-			margin: 0 auto 2.5rem;
-		}
-		
-		.hero-actions {
-			justify-content: center;
-		}
-		
-		.glass-float {
-			display: none; /* Hide floating elements on mobile for cleaner look */
-		}
-		
-		.cta-card {
-			flex-direction: column;
-			text-align: center;
-			gap: 2rem;
-			padding: 2rem;
-		}
-		
-		.benefit-list li {
-			text-align: left;
-		}
+		.hero-subtitle { margin: 0 auto 2rem; }
+		.hero-actions, .hero-trust { justify-content: center; }
+		.content-side .hero-eyebrow { display: inline-block; }
+		.benefit-list { display: inline-block; text-align: left; }
+		.glass-float { display: none; }
+		.protection-grid { grid-template-columns: 1fr; }
+		.cta-card { flex-direction: column; text-align: center; gap: 2rem; padding: 2.5rem; }
 	}
 
 	@media (max-width: 600px) {
-		.hero-title {
-			font-size: 2.5rem;
-		}
-		.hero-actions {
-			flex-direction: column;
-		}
+		.hero-title { font-size: 2.4rem; }
+		.section-header h2 { font-size: 2rem; }
+		.hero-actions { flex-direction: column; }
+		.opensource-card { padding: 2rem; }
 	}
 </style>
